@@ -626,6 +626,9 @@
     <Compile Include="Thumbnails\ThumbnailHelper.cs" />
     <Compile Include="Tracking\Tracking\Circle\TrackerCircle.cs" />
     <Compile Include="Tracking\Tracking\TrackStatus.cs" />
+    <Compile Include="Dialogs\FormCalibrationWizard.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Measurement\LensDistortion\FormCalibrateDistortion.cs">
       <SubType>Form</SubType>
     </Compile>

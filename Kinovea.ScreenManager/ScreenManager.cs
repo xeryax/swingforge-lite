@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright © Joan Charmant 2008.
 jcharmant@gmail.com
@@ -166,6 +166,7 @@ namespace Kinovea.ScreenManager
         private ToolStripMenuItem mnuLensCalibrationManual = new ToolStripMenuItem();
         private ToolStripMenuItem mnuLensCalibrationNone = new ToolStripMenuItem();
         private ToolStripMenuItem mnuCalibrationValidation = new ToolStripMenuItem();
+        private ToolStripMenuItem mnuStereoCalibration = new ToolStripMenuItem();
         private ToolStripMenuItem mnuScatterDiagram = new ToolStripMenuItem();
         private ToolStripMenuItem mnuLinearKinematics = new ToolStripMenuItem();
         private ToolStripMenuItem mnuAngularKinematics = new ToolStripMenuItem();
@@ -682,6 +683,10 @@ namespace Kinovea.ScreenManager
             mnuAngleAngleDiagram.Click += mnuAngleAngleDiagram_OnClick;
             mnuAngleAngleDiagram.MergeAction = MergeAction.Append;
 
+            mnuStereoCalibration.Image = Properties.Resources.camerasingle;
+            mnuStereoCalibration.Click += mnuStereoCalibration_OnClick;
+            mnuStereoCalibration.MergeAction = MergeAction.Append;
+
             mnuCatchTools.DropDownItems.AddRange(new ToolStripItem[] {
                 mnuImportImage,
                 mnuBackground,
@@ -691,6 +696,7 @@ namespace Kinovea.ScreenManager
                 mnuCoordinateSystem,
                 mnuLensCalibration,
                 mnuCalibrationValidation,
+                mnuStereoCalibration,
                 new ToolStripSeparator(),
                 mnuScatterDiagram,
                 mnuLinearKinematics,
@@ -2172,6 +2178,7 @@ namespace Kinovea.ScreenManager
             mnuLensCalibrationNone.Text = ScreenManagerLang.ScreenManagerKernel_LensCalibration_None;
             mnuCoordinateSystem.Text = ScreenManagerLang.mnuCoordinateSystem;
             mnuCalibrationValidation.Text = ScreenManagerLang.ScreenManagerKernel_LensCalibration_CalibrationValidation;
+            mnuStereoCalibration.Text = "Stereo Camera Calibration...";
             mnuScatterDiagram.Text = ScreenManagerLang.DataAnalysis_ScatterDiagram + "…";
             mnuLinearKinematics.Text = ScreenManagerLang.DataAnalysis_LinearKinematics + "…";
             mnuAngularKinematics.Text = ScreenManagerLang.DataAnalysis_AngularKinematics + "…";
@@ -3048,6 +3055,23 @@ namespace Kinovea.ScreenManager
                 return;
 
             thisScreen.ShowCalibrationValidation(otherScreen);
+        }
+
+        private void mnuStereoCalibration_OnClick(object sender, EventArgs e)
+        {
+            // Requires dual player mode (two screens)
+            if (dualPlayer == null || !dualPlayer.Active)
+            {
+                MessageBox.Show(
+                    "Stereo calibration requires two video screens.\nPlease load videos in both screens first.",
+                    "Stereo Calibration",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            var wizard = new FormCalibrationWizard(() => dualPlayer.GetCurrentFrames());
+            wizard.ShowDialog();
         }
 
         private void mnuScatterDiagram_OnClick(object sender, EventArgs e)

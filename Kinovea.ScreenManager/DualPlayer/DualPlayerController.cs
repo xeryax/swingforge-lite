@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +6,8 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.IO;
 using Kinovea.Services;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
 
 namespace Kinovea.ScreenManager
 {
@@ -135,6 +137,34 @@ namespace Kinovea.ScreenManager
 
             UpdateHairLines();
         }
+        /// <summary>
+        /// Get the current frames from both players as OpenCV Mat objects for stereo calibration.
+        /// </summary>
+        /// <returns>Tuple of (frameA, frameB) or (null, null) if not available</returns>
+        public (Mat frameA, Mat frameB) GetCurrentFrames()
+        {
+            if (!active || players.Count < 2)
+                return (null, null);
+
+            try
+            {
+                Bitmap bmpA = players[0].GetCurrentImage();
+                Bitmap bmpB = players[1].GetCurrentImage();
+
+                if (bmpA == null || bmpB == null)
+                    return (null, null);
+
+                Mat frameA = BitmapConverter.ToMat(bmpA);
+                Mat frameB = BitmapConverter.ToMat(bmpB);
+
+                return (frameA, frameB);
+            }
+            catch
+            {
+                return (null, null);
+            }
+        }
+
         public void CommitLaunchSettings()
         {
             if (!active)

@@ -215,7 +215,16 @@ namespace Kinovea.ScreenManager
         {
             get { return frameServer; }
             set { frameServer = value; }
-        }        
+        }
+
+        /// <summary>
+        /// Get the current displayed image (for stereo calibration).
+        /// </summary>
+        public Bitmap GetCurrentImage()
+        {
+            return frameServer?.CurrentImage;
+        }
+
         public bool IsPlaying
         {
             get

@@ -87,6 +87,10 @@
     <Compile Include="PoseStatsRenderer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="YoloV8PoseInference.cs" />
+    <Compile Include="CameraCalibration.cs" />
+    <Compile Include="CalibrationData.cs" />
+    <Compile Include="CalibrationManager.cs" />
+    <Compile Include="ArucoCalibrator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
