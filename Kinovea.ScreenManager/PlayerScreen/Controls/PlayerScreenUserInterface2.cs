@@ -294,6 +294,7 @@ namespace Kinovea.ScreenManager
 
         #region Members
         private FrameServerPlayer m_FrameServer;
+        private PlayerScreen parentPlayerScreen;  // SwingForge Lite - Reference for pose overlay
 
         // Playback current state
         private bool m_bIsCurrentlyPlaying;
@@ -436,6 +437,8 @@ namespace Kinovea.ScreenManager
 
         private ToolStripButton btnAddKeyFrame;
         private ToolStripButton btnToggleSidePanel;
+        private ToolStripButton btnTogglePose;
+        private ToolStripButton btnToggleStats;
         private ToolStripButton btnToolPresets;
         private InfobarPlayer infobar = new InfobarPlayer();
         private bool isSidePanelVisible;
@@ -1148,6 +1151,24 @@ namespace Kinovea.ScreenManager
             btnToggleSidePanel.Click += (s, e) => ToggleSidePanelVisibility();
             btnToggleSidePanel.ToolTipText = ScreenManagerLang.ToolTip_ShowComments;
             drawingToolbarPresenter.AddSpecialButton(btnToggleSidePanel);
+
+            // SwingForge - Pose toggle button.
+            btnTogglePose = CreateToolButton();
+            btnTogglePose.Image = Drawings.running_16;
+            btnTogglePose.Click += (s, e) => TogglePoseVisibility();
+            btnTogglePose.ToolTipText = "Toggle pose skeleton visibility";
+            btnTogglePose.CheckOnClick = true;
+            btnTogglePose.Checked = true;
+            drawingToolbarPresenter.AddSpecialButton(btnTogglePose);
+
+            // SwingForge - Stats toggle button.
+            btnToggleStats = CreateToolButton();
+            btnToggleStats.Image = Resources.chart_bar;
+            btnToggleStats.Click += (s, e) => ToggleStatsVisibility();
+            btnToggleStats.ToolTipText = "Toggle pose statistics overlay";
+            btnToggleStats.CheckOnClick = true;
+            btnToggleStats.Checked = false;
+            drawingToolbarPresenter.AddSpecialButton(btnToggleStats);
 
             drawingToolbarPresenter.AddSeparator();
 
@@ -4255,6 +4276,12 @@ namespace Kinovea.ScreenManager
                 FlushMagnifierOnGraphics(_sourceImage, g, _transform, _iKeyFrameIndex, _iPosition);
                 FlushDrawingsOnGraphics(g, _transform, _iKeyFrameIndex, _iPosition);
             }
+
+            // SwingForge - Draw statistics overlay on top
+            if (parentPlayerScreen != null)
+            {
+                parentPlayerScreen.DrawStatsOverlay(g, _renderingSize.Width, _renderingSize.Height);
+            }
         }
         private void FlushDrawingsOnGraphics(Graphics canvas, ImageTransform transformer, int keyFrameIndex, long timestamp)
         {
@@ -5105,6 +5132,43 @@ namespace Kinovea.ScreenManager
             splitViewport_Properties.Panel2Collapsed = !isSidePanelVisible;
             screenDescriptor.SidePanelVisible = isSidePanelVisible;
         }
+        
+        private void TogglePoseVisibility()
+        {
+            OnPoke();
+
+            if (!m_FrameServer.Loaded)
+                return;
+
+            // Toggle visibility of all pose drawings by adjusting opacity
+            bool showPose = btnTogglePose.Checked;
+            foreach (var keyframe in m_FrameServer.Metadata.Keyframes)
+            {
+                foreach (var drawing in keyframe.Drawings)
+                {
+                    if (drawing.Name == "Pose" && drawing.InfosFading != null)
+                    {
+                        // Use max opacity of 0 to hide, restore normal visibility to show
+                        drawing.InfosFading.MasterFactor = showPose ? 1.0f : 0.0f;
+                    }
+                }
+            }
+            
+            DoInvalidate();
+        }
+
+        private void ToggleStatsVisibility()
+        {
+            OnPoke();
+
+            if (!m_FrameServer.Loaded)
+                return;
+
+            // Notify parent to toggle stats overlay
+            parentPlayerScreen?.ToggleStatsOverlay(btnToggleStats.Checked);
+            DoInvalidate();
+        }
+
         /// <summary>
         /// Force show the side panel at the drawing properties tab.
         /// 0: keyframes, 1: drawings, 2: tracking.
@@ -5669,6 +5733,45 @@ namespace Kinovea.ScreenManager
         {
             m_MessageToaster.SetDuration(duration);
             m_MessageToaster.Show(message);
+        }
+        #endregion
+
+        #region SwingForge Lite - Pose Detection UI
+        private int poseAnalysisProgress = -1;
+        private bool poseAnalysisComplete = false;
+
+        /// <summary>
+        /// Set the parent PlayerScreen reference for pose overlay rendering.
+        /// </summary>
+        public void SetParentPlayerScreen(PlayerScreen playerScreen)
+        {
+            parentPlayerScreen = playerScreen;
+        }
+
+        /// <summary>
+        /// Update the pose analysis status display.
+        /// </summary>
+        public void UpdatePoseAnalysisStatus(int progress, bool complete)
+        {
+            poseAnalysisProgress = progress;
+            poseAnalysisComplete = complete;
+
+            if (complete)
+            {
+                ToastMessage("Pose analysis complete", 2000);
+            }
+            else if (progress >= 0)
+            {
+                // Could update a progress bar here if we add one to the UI
+            }
+        }
+
+        /// <summary>
+        /// Get whether pose analysis is complete.
+        /// </summary>
+        public bool IsPoseAnalysisComplete
+        {
+            get { return poseAnalysisComplete; }
         }
         #endregion
 

@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright © Joan Charmant 2012.
 jcharmant@gmail.com 
@@ -245,6 +245,38 @@ namespace Kinovea.Services
             set { sideBySideHorizontal = value; Save(); }
         }
 
+        // Pose Detection Settings (SwingForge Lite)
+        public bool PoseDetectionEnabled
+        {
+            get { BeforeRead(); return poseDetectionEnabled; }
+            set { poseDetectionEnabled = value; Save(); }
+        }
+        public int PoseSampleRate
+        {
+            get { BeforeRead(); return poseSampleRate; }
+            set { poseSampleRate = value; Save(); }
+        }
+        public float PoseConfidenceThreshold
+        {
+            get { BeforeRead(); return poseConfidenceThreshold; }
+            set { poseConfidenceThreshold = value; Save(); }
+        }
+        public bool PoseShowSkeleton
+        {
+            get { BeforeRead(); return poseShowSkeleton; }
+            set { poseShowSkeleton = value; Save(); }
+        }
+        public bool PoseShowAngles
+        {
+            get { BeforeRead(); return poseShowAngles; }
+            set { poseShowAngles = value; Save(); }
+        }
+        public bool PoseAutoAnalyze
+        {
+            get { BeforeRead(); return poseAutoAnalyze; }
+            set { poseAutoAnalyze = value; Save(); }
+        }
+
         #endregion
 
         #region Members
@@ -289,6 +321,14 @@ namespace Kinovea.Services
         private KeyframePresetsParameters keyframePresetsParameters = new KeyframePresetsParameters();
         private bool showCacheInTimeline = false;
         private bool sideBySideHorizontal = true;
+        
+        // Pose Detection Settings (SwingForge Lite)
+        private bool poseDetectionEnabled = true;
+        private int poseSampleRate = 5;
+        private float poseConfidenceThreshold = 0.25f;
+        private bool poseShowSkeleton = true;
+        private bool poseShowAngles = true;
+        private bool poseAutoAnalyze = true;
         #endregion
 
         private void Save()
@@ -388,6 +428,14 @@ namespace Kinovea.Services
 
             writer.WriteElementString("PandocPath", pandocPath);
             writer.WriteElementString("SideBySideHorizontal", XmlHelper.WriteBoolean(sideBySideHorizontal));
+            
+            // Pose Detection Settings (SwingForge Lite)
+            writer.WriteElementString("PoseDetectionEnabled", XmlHelper.WriteBoolean(poseDetectionEnabled));
+            writer.WriteElementString("PoseSampleRate", poseSampleRate.ToString());
+            writer.WriteElementString("PoseConfidenceThreshold", poseConfidenceThreshold.ToString("0.00", CultureInfo.InvariantCulture));
+            writer.WriteElementString("PoseShowSkeleton", XmlHelper.WriteBoolean(poseShowSkeleton));
+            writer.WriteElementString("PoseShowAngles", XmlHelper.WriteBoolean(poseShowAngles));
+            writer.WriteElementString("PoseAutoAnalyze", XmlHelper.WriteBoolean(poseAutoAnalyze));
         }
         
         public void ReadXML(XmlReader reader)
@@ -518,6 +566,25 @@ namespace Kinovea.Services
                         break;
                     case "SideBySideHorizontal":
                         sideBySideHorizontal = XmlHelper.ParseBoolean(reader.ReadElementContentAsString());
+                        break;
+                    // Pose Detection Settings (SwingForge Lite)
+                    case "PoseDetectionEnabled":
+                        poseDetectionEnabled = XmlHelper.ParseBoolean(reader.ReadElementContentAsString());
+                        break;
+                    case "PoseSampleRate":
+                        poseSampleRate = reader.ReadElementContentAsInt();
+                        break;
+                    case "PoseConfidenceThreshold":
+                        poseConfidenceThreshold = float.Parse(reader.ReadElementContentAsString(), CultureInfo.InvariantCulture);
+                        break;
+                    case "PoseShowSkeleton":
+                        poseShowSkeleton = XmlHelper.ParseBoolean(reader.ReadElementContentAsString());
+                        break;
+                    case "PoseShowAngles":
+                        poseShowAngles = XmlHelper.ParseBoolean(reader.ReadElementContentAsString());
+                        break;
+                    case "PoseAutoAnalyze":
+                        poseAutoAnalyze = XmlHelper.ParseBoolean(reader.ReadElementContentAsString());
                         break;
                     default:
                         reader.ReadOuterXml();

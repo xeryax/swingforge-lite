@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="12.0">
   <Import Project="..\packages\OpenCvSharp4.runtime.win.4.10.0.20240616\build\net48\OpenCvSharp4.runtime.win.props" Condition="Exists('..\packages\OpenCvSharp4.runtime.win.4.10.0.20240616\build\net48\OpenCvSharp4.runtime.win.props')" />
   <PropertyGroup>
@@ -569,6 +569,7 @@
     <Compile Include="Importers\OpenPose\OpenPoseFrame.cs" />
     <Compile Include="Importers\OpenPose\OpenPosePerson.cs" />
     <Compile Include="Importers\OpenPose\MetadataImporterOpenPose.cs" />
+    <Compile Include="Importers\YoloV8Pose\MetadataImporterYoloV8Pose.cs" />
     <Compile Include="Importers\SRT\MetadataImporterSRT.cs" />
     <Compile Include="Metadata\Interfaces\ITimeable.cs" />
     <Compile Include="Metadata\Serialization\MeasuredData.cs" />
@@ -1449,6 +1450,10 @@
     <ProjectReference Include="..\Kinovea.Video\Kinovea.Video.csproj">
       <Project>{4CBB8462-00A7-4814-AD3B-07C82EEEB0DE}</Project>
       <Name>Kinovea.Video</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Kinovea.PoseDetection\Kinovea.PoseDetection.csproj">
+      <Project>{B1234567-89AB-CDEF-0123-456789ABCDEF}</Project>
+      <Name>Kinovea.PoseDetection</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KinoveaPostureTool>
+  <FormatVersion>1.1</FormatVersion>
+  <Id>A7B8C9D0-E1F2-3456-7890-ABCDEF012345</Id>
+  <Name>YOLOv8Pose</Name>
+  <DisplayName>YOLOv8 Pose (COCO 17)</DisplayName>
+  <Icon>running_16</Icon>
+
+  <!-- 
+  COCO 17 Keypoint format (YOLOv8-Pose output):
+  0: nose, 1: left_eye, 2: right_eye, 3: left_ear, 4: right_ear,
+  5: left_shoulder, 6: right_shoulder, 7: left_elbow, 8: right_elbow,
+  9: left_wrist, 10: right_wrist, 11: left_hip, 12: right_hip,
+  13: left_knee, 14: right_knee, 15: left_ankle, 16: right_ankle
+  -->
+
+  <Points>
+    <Point name="Nose" value="185;60" color="#dc322f" />
+    <Point name="Left eye" value="195;50" color="#dc322f" />
+    <Point name="Right eye" value="175;50" color="#dc322f" />
+    <Point name="Left ear" value="210;55" color="#dc322f" />
+    <Point name="Right ear" value="160;55" color="#dc322f" />
+    <Point name="Left shoulder" value="225;120" color="#cb4b16" />
+    <Point name="Right shoulder" value="145;120" color="#b58900" />
+    <Point name="Left elbow" value="250;200" color="#cb4b16" />
+    <Point name="Right elbow" value="120;200" color="#b58900" />
+    <Point name="Left wrist" value="270;280" color="#cb4b16" />
+    <Point name="Right wrist" value="100;280" color="#b58900" />
+    <Point name="Left hip" value="210;260" color="#6c71c4" />
+    <Point name="Right hip" value="160;260" color="#d33682" />
+    <Point name="Left knee" value="210;380" color="#6c71c4" />
+    <Point name="Right knee" value="160;380" color="#d33682" />
+    <Point name="Left ankle" value="210;500" color="#6c71c4" />
+    <Point name="Right ankle" value="160;500" color="#d33682" />
+  </Points>
+
+  <Segments>
+    <!-- Head -->
+    <Segment name="Left eye to nose" point1="1" point2="0" style="Solid" width="2" color="#dc322f"/>
+    <Segment name="Right eye to nose" point1="2" point2="0" style="Solid" width="2" color="#dc322f"/>
+    <Segment name="Left ear to left eye" point1="3" point2="1" style="Solid" width="2" color="#dc322f"/>
+    <Segment name="Right ear to right eye" point1="4" point2="2" style="Solid" width="2" color="#dc322f"/>
+    <!-- Shoulders -->
+    <Segment name="Shoulders" point1="5" point2="6" style="Solid" width="2" color="#268bd2"/>
+    <!-- Left arm -->
+    <Segment name="Left arm" point1="5" point2="7" style="Solid" width="2" color="#cb4b16"/>
+    <Segment name="Left forearm" point1="7" point2="9" style="Solid" width="2" color="#cb4b16"/>
+    <!-- Right arm -->
+    <Segment name="Right arm" point1="6" point2="8" style="Solid" width="2" color="#b58900"/>
+    <Segment name="Right forearm" point1="8" point2="10" style="Solid" width="2" color="#b58900"/>
+    <!-- Trunk -->
+    <Segment name="Left trunk" point1="5" point2="11" style="Solid" width="2" color="#268bd2"/>
+    <Segment name="Right trunk" point1="6" point2="12" style="Solid" width="2" color="#268bd2"/>
+    <Segment name="Hips" point1="11" point2="12" style="Solid" width="2" color="#268bd2"/>
+    <!-- Left leg -->
+    <Segment name="Left thigh" point1="11" point2="13" style="Solid" width="2" color="#6c71c4"/>
+    <Segment name="Left shin" point1="13" point2="15" style="Solid" width="2" color="#6c71c4"/>
+    <!-- Right leg -->
+    <Segment name="Right thigh" point1="12" point2="14" style="Solid" width="2" color="#d33682"/>
+    <Segment name="Right shin" point1="14" point2="16" style="Solid" width="2" color="#d33682"/>
+  </Segments>
+
+  <!-- Options for visibility based on confidence -->
+  <Options>
+    <Option name="showNose" value="true" />
+    <Option name="showLEye" value="true" />
+    <Option name="showREye" value="true" />
+    <Option name="showLEar" value="true" />
+    <Option name="showREar" value="true" />
+    <Option name="showLShoulder" value="true" />
+    <Option name="showRShoulder" value="true" />
+    <Option name="showLElbow" value="true" />
+    <Option name="showRElbow" value="true" />
+    <Option name="showLWrist" value="true" />
+    <Option name="showRWrist" value="true" />
+    <Option name="showLHip" value="true" />
+    <Option name="showRHip" value="true" />
+    <Option name="showLKnee" value="true" />
+    <Option name="showRKnee" value="true" />
+    <Option name="showLAnkle" value="true" />
+    <Option name="showRAnkle" value="true" />
+  </Options>
+
+  <!-- Interaction -->
+  <Handles>
+    <Handle type="Point" reference="0" color="#dc322f"/>
+    <Handle type="Point" reference="1" color="#dc322f"/>
+    <Handle type="Point" reference="2" color="#dc322f"/>
+    <Handle type="Point" reference="3" color="#dc322f"/>
+    <Handle type="Point" reference="4" color="#dc322f"/>
+    <Handle type="Point" reference="5" color="#cb4b16"/>
+    <Handle type="Point" reference="6" color="#b58900"/>
+    <Handle type="Point" reference="7" color="#cb4b16">
+      <Impacts>
+        <KeepAngle origin="7" leg1="5" leg2="9"/>
+      </Impacts>
+    </Handle>
+    <Handle type="Point" reference="8" color="#b58900">
+      <Impacts>
+        <KeepAngle origin="8" leg1="6" leg2="10"/>
+      </Impacts>
+    </Handle>
+    <Handle type="Point" reference="9" color="#cb4b16"/>
+    <Handle type="Point" reference="10" color="#b58900"/>
+    <Handle type="Point" reference="11" color="#6c71c4"/>
+    <Handle type="Point" reference="12" color="#d33682"/>
+    <Handle type="Point" reference="13" color="#6c71c4">
+      <Impacts>
+        <KeepAngle origin="13" leg1="11" leg2="15"/>
+      </Impacts>
+    </Handle>
+    <Handle type="Point" reference="14" color="#d33682">
+      <Impacts>
+        <KeepAngle origin="14" leg1="12" leg2="16"/>
+      </Impacts>
+    </Handle>
+    <Handle type="Point" reference="15" color="#6c71c4"/>
+    <Handle type="Point" reference="16" color="#d33682"/>
+  </Handles>
+  
+  <HitZone>
+    <Polygon points="5;6;12;11"/>
+  </HitZone>
+  
+  <Capabilities flipHorizontal="true" flipVertical="true" />
+
+</KinoveaPostureTool>

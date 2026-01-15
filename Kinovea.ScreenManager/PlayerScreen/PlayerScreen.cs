@@ -1,6 +1,6 @@
 #region Licence
 /*
-Copyright © Joan Charmant 2008.
+Copyright ? Joan Charmant 2008.
 jcharmant@gmail.com 
  
 This file is part of Kinovea.
@@ -31,6 +31,7 @@ using System.Windows.Forms;
 using Kinovea.ScreenManager.Languages;
 using Kinovea.Services;
 using Kinovea.Video;
+using Kinovea.PoseDetection;
 
 namespace Kinovea.ScreenManager
 {
@@ -388,6 +389,13 @@ namespace Kinovea.ScreenManager
         private bool synched;
         private ReplayWatcher replayWatcher;
         
+        // SwingForge Lite - Pose Detection
+        private PoseAnalysisWorker poseWorker;
+        private PoseCache poseCache;
+        private PoseStatistics poseStats;
+        private PoseStatsRenderer poseStatsRenderer;
+        private bool statsOverlayEnabled = false;
+        
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         #endregion
 
@@ -399,6 +407,9 @@ namespace Kinovea.ScreenManager
             frameServer = new FrameServerPlayer(historyStack);
             replayWatcher = new ReplayWatcher(this);
             view = new PlayerScreenUserInterface(frameServer, drawingToolbarPresenter);
+
+            // SwingForge Lite - Initialize pose detection reference
+            view.SetParentPlayerScreen(this);
 
             BindCommands();
         }
@@ -647,6 +658,9 @@ namespace Kinovea.ScreenManager
         }
         public override void AfterClose()
         {
+            // SwingForge Lite - Clean up pose detection
+            DisposePoseDetection();
+
             frameServer.Metadata.Dispose();
             replayWatcher.Stop();
             replayWatcher.Dispose();
@@ -944,6 +958,12 @@ namespace Kinovea.ScreenManager
         {
             RaiseActivated(EventArgs.Empty);
 
+            // SwingForge Lite - Start pose analysis
+            if (frameServer.Loaded && PreferencesManager.PlayerPreferences.PoseAutoAnalyze)
+            {
+                StartPoseAnalysis();
+            }
+
             if (view.ScreenDescriptor != null && view.ScreenDescriptor.IsReplayWatcher)
             {
                 // Bring the whole window back if it was minimized or behind other windows.
@@ -1135,5 +1155,210 @@ namespace Kinovea.ScreenManager
 
         //    //frameServer.Metadata.TrackabilityManager.Track(frame);
         //}
+
+        #region SwingForge Lite - Pose Detection
+        /// <summary>
+        /// Start pose analysis for the current video.
+        /// </summary>
+        public void StartPoseAnalysis()
+        {
+            if (!frameServer.Loaded)
+                return;
+
+            string videoPath = frameServer.VideoReader.FilePath;
+            if (string.IsNullOrEmpty(videoPath))
+                return;
+
+            // Check for existing valid cache - import directly into metadata
+            if (PoseCache.IsValid(videoPath))
+            {
+                log.DebugFormat("Loading pose cache for: {0}", Path.GetFileName(videoPath));
+                poseCache = PoseCache.Load(videoPath);
+                ImportPoseToMetadata(poseCache);
+                view.UpdatePoseAnalysisStatus(100, true);
+                return;
+            }
+
+            // Find model path
+            string modelPath = GetPoseModelPath();
+            if (string.IsNullOrEmpty(modelPath) || !File.Exists(modelPath))
+            {
+                log.WarnFormat("Pose model not found at: {0}", modelPath);
+                return;
+            }
+
+            // Start background analysis
+            log.DebugFormat("Starting pose analysis for: {0}", Path.GetFileName(videoPath));
+            
+            if (poseWorker != null)
+            {
+                poseWorker.Cancel();
+                poseWorker.Dispose();
+            }
+
+            poseWorker = new PoseAnalysisWorker();
+            poseWorker.SampleRate = PreferencesManager.PlayerPreferences.PoseSampleRate;
+            poseWorker.ConfidenceThreshold = PreferencesManager.PlayerPreferences.PoseConfidenceThreshold;
+            poseWorker.ModelPath = modelPath;
+
+            poseWorker.ProgressChanged += PoseWorker_ProgressChanged;
+            poseWorker.Completed += PoseWorker_Completed;
+            poseWorker.Error += PoseWorker_Error;
+
+            poseWorker.StartAnalysis(videoPath);
+            view.UpdatePoseAnalysisStatus(0, false);
+        }
+
+        private string GetPoseModelPath()
+        {
+            // Look for model in several locations
+            string appDir = Path.GetDirectoryName(Application.ExecutablePath);
+            string[] searchPaths = new string[]
+            {
+                Path.Combine(appDir, "Models", "yolov8n-pose.onnx"),
+                Path.Combine(appDir, "yolov8n-pose.onnx"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SwingForge", "Models", "yolov8n-pose.onnx")
+            };
+
+            foreach (string path in searchPaths)
+            {
+                if (File.Exists(path))
+                    return path;
+            }
+
+            return searchPaths[0]; // Return default expected path
+        }
+
+        private void PoseWorker_ProgressChanged(object sender, int progress)
+        {
+            if (view.InvokeRequired)
+                view.BeginInvoke(new Action(() => view.UpdatePoseAnalysisStatus(progress, false)));
+            else
+                view.UpdatePoseAnalysisStatus(progress, false);
+        }
+
+        private void PoseWorker_Completed(object sender, PoseCache cache)
+        {
+            poseCache = cache;
+            
+            log.DebugFormat("Pose analysis completed. {0} frames analyzed.", cache.Frames.Count);
+
+            // Import pose data into Kinovea's metadata as drawings
+            if (view.InvokeRequired)
+            {
+                view.BeginInvoke(new Action(() => {
+                    ImportPoseToMetadata(cache);
+                    view.UpdatePoseAnalysisStatus(100, true);
+                    view.RefreshImage();
+                }));
+            }
+            else
+            {
+                ImportPoseToMetadata(cache);
+                view.UpdatePoseAnalysisStatus(100, true);
+                view.RefreshImage();
+            }
+        }
+
+        private void ImportPoseToMetadata(PoseCache cache)
+        {
+            if (cache == null || cache.Frames.Count == 0)
+                return;
+
+            string videoPath = frameServer.VideoReader.FilePath;
+            
+            try
+            {
+                MetadataImporterYoloV8Pose.Import(frameServer.Metadata, videoPath);
+                log.DebugFormat("Imported {0} pose frames into metadata.", cache.Frames.Count);
+
+                // Load pose statistics
+                poseStats = MetadataImporterYoloV8Pose.GetStatistics(videoPath);
+                if (poseStatsRenderer == null)
+                    poseStatsRenderer = new PoseStatsRenderer();
+            }
+            catch (Exception ex)
+            {
+                log.ErrorFormat("Failed to import pose data: {0}", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Toggle statistics overlay visibility.
+        /// </summary>
+        public void ToggleStatsOverlay(bool enabled)
+        {
+            statsOverlayEnabled = enabled;
+        }
+
+        /// <summary>
+        /// Draw statistics overlay if enabled.
+        /// </summary>
+        public void DrawStatsOverlay(Graphics g, int width, int height)
+        {
+            if (!statsOverlayEnabled || poseStats == null || poseStatsRenderer == null)
+                return;
+
+            // Update current angles based on current frame
+            UpdateCurrentPoseStats();
+
+            poseStatsRenderer.Draw(g, poseStats, width, height);
+        }
+
+        private void UpdateCurrentPoseStats()
+        {
+            if (poseCache == null || poseStats == null || !frameServer.Loaded)
+                return;
+
+            // Get current frame number
+            long currentTimestamp = frameServer.VideoReader.Current?.Timestamp ?? 0;
+            long frameNumber = (currentTimestamp - frameServer.VideoReader.Info.FirstTimeStamp) / 
+                              frameServer.VideoReader.Info.AverageTimeStampsPerFrame;
+
+            // Find closest pose
+            var pose = poseCache.GetInterpolatedPose(frameNumber);
+            if (pose != null)
+            {
+                poseStats.CurrentShoulderAngle = AngleCalculator.CalculateRelativeShoulderAngle(pose);
+                poseStats.CurrentHipAngle = AngleCalculator.CalculateRelativeHipAngle(pose);
+                poseStats.CurrentLeftElbowAngle = AngleCalculator.CalculateLeftElbowAngle(pose);
+            }
+        }
+
+        private void PoseWorker_Error(object sender, string error)
+        {
+            log.ErrorFormat("Pose analysis error: {0}", error);
+            
+            if (view.InvokeRequired)
+                view.BeginInvoke(new Action(() => view.UpdatePoseAnalysisStatus(-1, false)));
+            else
+                view.UpdatePoseAnalysisStatus(-1, false);
+        }
+
+        /// <summary>
+        /// Cancel any ongoing pose analysis.
+        /// </summary>
+        public void CancelPoseAnalysis()
+        {
+            if (poseWorker != null && poseWorker.IsBusy)
+            {
+                poseWorker.Cancel();
+            }
+        }
+
+        /// <summary>
+        /// Clean up pose detection resources.
+        /// </summary>
+        private void DisposePoseDetection()
+        {
+            if (poseWorker != null)
+            {
+                poseWorker.Cancel();
+                poseWorker.Dispose();
+                poseWorker = null;
+            }
+            poseCache = null;
+        }
+        #endregion
     }
 }
