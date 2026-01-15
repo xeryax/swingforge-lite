@@ -1,15 +1,15 @@
-﻿using System;
+using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Resources;
 
 [assembly: AssemblyTitle("Kinovea.ScreenManager")]
-[assembly: AssemblyDescription("Kinovea Screen Manager Module")]
+[assembly: AssemblyDescription("SwingForge Lite Screen Manager Module (Based on Kinovea)")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Kinovea")]
-[assembly: AssemblyProduct("Kinovea")]
-[assembly: AssemblyCopyright("Copyright © 2006-2021 Joan Charmant")]
+[assembly: AssemblyCompany("SwingForge")]
+[assembly: AssemblyProduct("SwingForge Lite")]
+[assembly: AssemblyCopyright("Copyright © 2025 SwingForge. Based on Kinovea © 2006-2021 Joan Charmant")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]

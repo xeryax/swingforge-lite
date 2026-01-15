@@ -1,4 +1,4 @@
-﻿#region Using directives
+#region Using directives
 
 using System;
 using System.Reflection;
@@ -10,11 +10,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Kinovea.Camera.HTTP")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("SwingForge Lite - HTTP Cameras (Based on Kinovea)")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Kinovea.Camera.HTTP")]
-[assembly: AssemblyCopyright("Copyright © 2006-2021 - Joan Charmant and contributors.")]
+[assembly: AssemblyCompany("SwingForge")]
+[assembly: AssemblyProduct("SwingForge Lite")]
+[assembly: AssemblyCopyright("Copyright © 2025 SwingForge. Based on Kinovea © 2006-2021 Joan Charmant and contributors")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

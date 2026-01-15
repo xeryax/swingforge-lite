@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright © Joan Charmant 2008.
 jcharmant@gmail.com 
  
@@ -32,7 +32,7 @@ namespace Kinovea.Root
 {
     public partial class FormAbout : Form
     {
-        private string year = "2024";
+        private string year = "2025";
         private Font fontHeader = new Font("Microsoft Sans Serif", 10, FontStyle.Bold);
         private Font fontText = new Font("Microsoft Sans Serif", 9, FontStyle.Regular);
 
@@ -45,10 +45,13 @@ namespace Kinovea.Root
         private void Populate()
         {
             this.Text = "   " + RootLang.mnuAbout;
-            labelCopyright.Text = string.Format("Copyright © 2006-{0} - Joan Charmant and contributors.", year);
+            labelCopyright.Text = string.Format("Copyright © {0} SwingForge. Based on Kinovea © 2006-{0} Joan Charmant and contributors.", year);
             lblKinovea.Text = string.Format("{0} - {1}", Software.ApplicationName, Software.Version);
             lnkKinovea.Links.Clear();
             lnkKinovea.Links.Add(0, lnkKinovea.Text.Length, "https://www.kinovea.org");
+            
+            // GPL v2 compliance: This software is licensed under GPL v2.
+            // Original Kinovea source: https://www.kinovea.org
 
             PopulateTranslators();
             PopulateLicense();

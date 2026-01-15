@@ -89,7 +89,7 @@ namespace Kinovea.Root
         /// </summary>
         public void UpdateTitle()
         {
-            string title = "Kinovea";
+            string title = Software.ApplicationName;
             if (!string.IsNullOrEmpty(WindowManager.TitleName))
                 title += string.Format(" [{0}]", WindowManager.TitleName);
 

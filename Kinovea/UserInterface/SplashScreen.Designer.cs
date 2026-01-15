@@ -40,9 +40,9 @@ namespace Kinovea.Root
       this.lblVersion.AutoSize = true;
       this.lblVersion.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(54)))), ((int)(((byte)(54)))), ((int)(((byte)(54)))));
       this.lblVersion.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-      this.lblVersion.Font = new System.Drawing.Font("Consolas", 14.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+      this.lblVersion.Font = new System.Drawing.Font("Consolas", 7F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
       this.lblVersion.ForeColor = System.Drawing.Color.White;
-      this.lblVersion.Location = new System.Drawing.Point(411, 301);
+      this.lblVersion.Location = new System.Drawing.Point(510, 335);
       this.lblVersion.Name = "lblVersion";
       this.lblVersion.Size = new System.Drawing.Size(70, 22);
       this.lblVersion.TabIndex = 1;
@@ -50,8 +50,8 @@ namespace Kinovea.Root
       // 
       // pictureBox1
       // 
-      this.pictureBox1.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("pictureBox1.BackgroundImage")));
-      this.pictureBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
+      this.pictureBox1.BackgroundImage = System.Drawing.Image.FromFile(System.IO.Path.Combine(System.Windows.Forms.Application.StartupPath, "SwingForge-Splash.png"));
+      this.pictureBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
       this.pictureBox1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
       this.pictureBox1.Dock = System.Windows.Forms.DockStyle.Fill;
       this.pictureBox1.Enabled = false;

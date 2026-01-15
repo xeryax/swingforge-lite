@@ -455,10 +455,11 @@ namespace Kinovea.Root
                 languageMenus.Add(lang.Key, mnuLang);
                 mnuLanguages.DropDownItems.Add(mnuLang);
             }
-            mnuTranslate1.Image = Properties.Resources.international;
-            mnuTranslate1.Click += (s, e) => Process.Start("https://hosted.weblate.org/engage/kinovea/");
-            mnuLanguages.DropDownItems.Add(new ToolStripSeparator());
-            mnuLanguages.DropDownItems.Add(mnuTranslate1);
+            // mnuTranslate1 hidden for SwingForge Lite
+            // mnuTranslate1.Image = Properties.Resources.international;
+            // mnuTranslate1.Click += (s, e) => Process.Start("https://hosted.weblate.org/engage/kinovea/");
+            // mnuLanguages.DropDownItems.Add(new ToolStripSeparator());
+            // mnuLanguages.DropDownItems.Add(mnuTranslate1);
 
             mnuPreferences.Image = Properties.Resources.wrench;
             mnuPreferences.Click += new EventHandler(mnuPreferencesOnClick);
@@ -515,12 +516,12 @@ namespace Kinovea.Root
 
             mnuHelp.DropDownItems.AddRange(new ToolStripItem[] { 
                 mnuHelpContents,
-                mnuTranslate2,
+                // mnuTranslate2, // Hidden for SwingForge Lite
                 new ToolStripSeparator(), 
                 mnuApplicationFolder, 
                 mnuEnableDebugLogs,
                 new ToolStripSeparator(),
-                mnuWebsite,
+                // mnuWebsite, // Hidden for SwingForge Lite
                 mnuAbout });
             #endregion
 
@@ -583,8 +584,8 @@ namespace Kinovea.Root
             
             mnuOptions.Text = RootLang.mnuOptions;
             mnuLanguages.Text = RootLang.mnuLanguages;
-            mnuTranslate1.Text = RootLang.mnuTranslate;
-            mnuTranslate2.Text = RootLang.mnuTranslate;
+            // mnuTranslate1.Text = RootLang.mnuTranslate; // Hidden for SwingForge Lite
+            // mnuTranslate2.Text = RootLang.mnuTranslate; // Hidden for SwingForge Lite
             mnuPreferences.Text = RootLang.mnuPreferences;
             mnuTimecode.Text = RootLang.mnuTimeFormat;
 
@@ -618,7 +619,7 @@ namespace Kinovea.Root
             mnuHelpContents.Text = RootLang.mnuHelpContents;
             mnuApplicationFolder.Text = RootLang.mnuOpenApplicationDataFolder;
             mnuEnableDebugLogs.Text = PreferencesManager.GeneralPreferences.EnableDebugLog ? RootLang.mnuDisableDebugLogs : RootLang.mnuEnableDebugLogs;
-            mnuWebsite.Text = "www.kinovea.org";
+            // mnuWebsite.Text = "www.kinovea.org"; // Hidden for SwingForge Lite
             mnuAbout.Text = RootLang.mnuAbout;
             mnuHelp.Text = RootLang.mnuHelp;
         }

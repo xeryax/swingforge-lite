@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright © Joan Charmant 2012.
 jcharmant@gmail.com 
@@ -31,7 +31,7 @@ namespace Kinovea.Services
 {
     public class Software
     {
-        public static string ApplicationName { get { return "Kinovea";}}
+        public static string ApplicationName { get { return "SwingForge Lite";}}
 
         public static bool Experimental { get { return false;}}
         

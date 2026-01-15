@@ -1,13 +1,13 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("Kinovea.Tests")]
-[assembly: AssemblyDescription("Kinovea Testing utility")]
+[assembly: AssemblyDescription("SwingForge Lite Testing utility (Based on Kinovea)")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Kinovea")]
-[assembly: AssemblyProduct("Kinovea")]
-[assembly: AssemblyCopyright("Copyright © 2006-2021 Joan Charmant")]
+[assembly: AssemblyCompany("SwingForge")]
+[assembly: AssemblyProduct("SwingForge Lite")]
+[assembly: AssemblyCopyright("Copyright © 2025 SwingForge. Based on Kinovea © 2006-2021 Joan Charmant")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]

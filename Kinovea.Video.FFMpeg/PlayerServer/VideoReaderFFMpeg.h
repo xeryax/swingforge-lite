@@ -46,9 +46,11 @@ along with Kinovea. If not, see http://www.gnu.org/licenses/.
 
 #pragma once
 
-extern "C" {
 #define __STDC_CONSTANT_MACROS
 #define __STDC_LIMIT_MACROS
+#include <stdint.h>
+
+extern "C" {
 #include <avcodec.h>
 #include <avdevice.h>
 #include <avfilter.h>

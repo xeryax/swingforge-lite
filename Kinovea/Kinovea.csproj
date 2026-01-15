@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="12.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -9,9 +9,9 @@
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Kinovea.Root</RootNamespace>
-    <AssemblyName>Kinovea</AssemblyName>
+    <AssemblyName>SwingForge</AssemblyName>
     <StartupObject>Kinovea.Root.Program</StartupObject>
-    <ApplicationIcon>kinovea-256x256.ico</ApplicationIcon>
+    <ApplicationIcon>..\swingforge-assets\app.ico</ApplicationIcon>
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <ManifestCertificateThumbprint>4199BE45A0B72AC0126562F0FD2A5A5B02D397DA</ManifestCertificateThumbprint>
     <ManifestKeyFile>Root_TemporaryKey.pfx</ManifestKeyFile>
@@ -43,8 +43,8 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>false</MapFileExtensions>
-    <SupportUrl>http://www.kinovea.org</SupportUrl>
-    <ProductName>Kinovea</ProductName>
+    <SupportUrl>https://swingforge.com</SupportUrl>
+    <ProductName>SwingForge Lite</ProductName>
     <PublisherName>Joan Charmant</PublisherName>
     <OpenBrowserOnPublish>false</OpenBrowserOnPublish>
     <ApplicationRevision>0</ApplicationRevision>
@@ -546,7 +546,6 @@
     </PublishFile>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="kinovea-256x256.ico" />
     <None Include="Resources\shortcut2.png" />
     <None Include="Resources\rename-16.png" />
     <None Include="Resources\symlink-file-16.png" />
@@ -611,7 +610,6 @@
     <None Include="Resources\replaywatcher2.png" />
     <None Include="Resources\csv.png" />
     <None Include="Resources\json.png" />
-    <None Include="Resources\kinovea-256x256.ico" />
     <None Include="Resources\translators.txt" />
     <None Include="Resources\file_txt.png" />
     <None Include="Resources\disk.png" />
@@ -654,6 +652,10 @@
       <Link>LogConf.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <Content Include="..\swingforge-assets\SwingForge-Splash.png">
+      <Link>SwingForge-Splash.png</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <COMReference Include="IWshRuntimeLibrary">

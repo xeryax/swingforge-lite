@@ -47,6 +47,9 @@ namespace Kinovea.Updater
         }
         public void ExtendMenu(ToolStrip menu)
         {
+            // TODO: SwingForge Lite - Re-enable when we have our own update server
+            // Check for updates menu is hidden for now
+            /*
             //Catch the Help menu.
             // file, edit, view, image, video, tools, options, window, help.
             ToolStripMenuItem mnuCatchHelp = new ToolStripMenuItem();            
@@ -68,6 +71,7 @@ namespace Kinovea.Updater
             ToolStripManager.Merge(ThisMenu, menu);
 
             RefreshUICulture();
+            */
         }
         public void ExtendToolBar(ToolStrip _toolbar) {}
         public void ExtendStatusBar(ToolStrip _statusbar) {}

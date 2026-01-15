@@ -1,11 +1,11 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("Kinovea.Camera.GenICam")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("SwingForge Lite - GenICam Cameras (Based on Kinovea)")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Kinovea.Camera.GenICam")]
-[assembly: AssemblyCopyright("Copyright © 2024 - Joan Charmant and the Kinovea community.")]
+[assembly: AssemblyCompany("SwingForge")]
+[assembly: AssemblyProduct("SwingForge Lite")]
+[assembly: AssemblyCopyright("Copyright © 2025 SwingForge. Based on Kinovea © 2024 Joan Charmant and the Kinovea community")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]

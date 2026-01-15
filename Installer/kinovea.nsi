@@ -1,4 +1,4 @@
-﻿;------------------------------------------------
+;------------------------------------------------
 ;Kinovea Installer
 ;------------------------------------------------
 
@@ -47,8 +47,8 @@
 ;Interface Configuration
 ;--------------------------------
     ;Icons
-    !define MUI_ICON "graphics\install.ico"
-    !define MUI_UNICON "graphics\uninstall.ico"
+    !define MUI_ICON "..\swingforge-assets\app.ico"
+    !define MUI_UNICON "..\swingforge-assets\app.ico"
 
     ;Image on the header of the page. (150x57 pixels)
     !define MUI_HEADERIMAGE

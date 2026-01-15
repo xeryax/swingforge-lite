@@ -30,10 +30,12 @@ along with Kinovea. If not, see http://www.gnu.org/licenses/.
 
 #pragma once
 
-extern "C" 
-{
 #define __STDC_CONSTANT_MACROS
 #define __STDC_LIMIT_MACROS
+#include <stdint.h>
+
+extern "C" 
+{
 #include <avformat.h>
 #include <avcodec.h>
 #include <avstring.h>

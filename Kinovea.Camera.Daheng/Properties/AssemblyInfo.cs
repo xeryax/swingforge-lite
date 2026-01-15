@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Kinovea.Camera.Daheng")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("SwingForge Lite - Daheng Cameras (Based on Kinovea)")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Kinovea.Camera.Daheng")]
-[assembly: AssemblyCopyright("Copyright © 2020 - Joan Charmant and the Kinovea community.")]
+[assembly: AssemblyCompany("SwingForge")]
+[assembly: AssemblyProduct("SwingForge Lite")]
+[assembly: AssemblyCopyright("Copyright © 2025 SwingForge. Based on Kinovea © 2020 Joan Charmant and the Kinovea community")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
