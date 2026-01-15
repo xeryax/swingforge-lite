@@ -225,6 +225,14 @@ namespace Kinovea.ScreenManager
             return frameServer?.CurrentImage;
         }
 
+        /// <summary>
+        /// Get the pose cache for this video (for stereo triangulation).
+        /// </summary>
+        public PoseCache GetPoseCache()
+        {
+            return poseCache;
+        }
+
         public bool IsPlaying
         {
             get

@@ -91,6 +91,10 @@
     <Compile Include="CalibrationData.cs" />
     <Compile Include="CalibrationManager.cs" />
     <Compile Include="ArucoCalibrator.cs" />
+    <Compile Include="KeyPoint3D.cs" />
+    <Compile Include="Pose3D.cs" />
+    <Compile Include="StereoTriangulator.cs" />
+    <Compile Include="PoseFrameMatcher.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

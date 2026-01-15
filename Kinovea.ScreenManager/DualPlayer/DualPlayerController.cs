@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.IO;
 using Kinovea.Services;
+using Kinovea.PoseDetection;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
 
@@ -59,6 +60,11 @@ namespace Kinovea.ScreenManager
         // If two videos have creation dates within this many seconds we consider them part 
         // of the same dual recording and start them together in the replay watcher context.
         private const int spanDualRecording = 5;
+
+        // 3D pose triangulation
+        private StereoTriangulator triangulator;
+        private PoseFrameMatcher frameMatcher;
+        private List<Pose3D> poses3D;
                                                  
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         #endregion
@@ -725,5 +731,119 @@ namespace Kinovea.ScreenManager
         {
             return player == players[0] ? 0 : 1;
         }
+
+        #region 3D Pose Triangulation
+
+        /// <summary>
+        /// Get the list of triangulated 3D poses.
+        /// </summary>
+        public List<Pose3D> Poses3D
+        {
+            get { return poses3D; }
+        }
+
+        /// <summary>
+        /// Check if 3D poses are available.
+        /// </summary>
+        public bool Has3DPoses
+        {
+            get { return poses3D != null && poses3D.Count > 0; }
+        }
+
+        /// <summary>
+        /// Initialize the triangulation system.
+        /// </summary>
+        public bool InitializeTriangulation()
+        {
+            triangulator = new StereoTriangulator();
+            frameMatcher = new PoseFrameMatcher();
+
+            if (!triangulator.IsReady)
+            {
+                log.WarnFormat("Triangulation not ready: {0}", triangulator.LastError);
+                return false;
+            }
+
+            log.Debug("Stereo triangulation initialized.");
+            return true;
+        }
+
+        /// <summary>
+        /// Triangulate 3D poses from both player's 2D pose caches.
+        /// Call this after both videos have completed pose analysis.
+        /// </summary>
+        public bool Triangulate3DPoses()
+        {
+            if (!active || players.Count < 2)
+                return false;
+
+            if (triangulator == null || !triangulator.IsReady)
+            {
+                if (!InitializeTriangulation())
+                    return false;
+            }
+
+            // Get pose caches from both players
+            var cacheA = players[0].GetPoseCache();
+            var cacheB = players[1].GetPoseCache();
+
+            if (cacheA == null || cacheB == null)
+            {
+                log.Warn("Cannot triangulate: one or both pose caches are null.");
+                return false;
+            }
+
+            if (cacheA.Frames == null || cacheA.Frames.Count == 0 ||
+                cacheB.Frames == null || cacheB.Frames.Count == 0)
+            {
+                log.Warn("Cannot triangulate: one or both pose caches are empty.");
+                return false;
+            }
+
+            // Perform triangulation
+            poses3D = frameMatcher.TriangulateAll(cacheA, cacheB, triangulator);
+
+            log.DebugFormat("Triangulated {0} 3D poses from {1} + {2} 2D poses.",
+                poses3D.Count, cacheA.Frames.Count, cacheB.Frames.Count);
+
+            return poses3D.Count > 0;
+        }
+
+        /// <summary>
+        /// Get the 3D pose for a specific frame number.
+        /// </summary>
+        public Pose3D GetPose3D(int frameNumber)
+        {
+            if (poses3D == null)
+                return null;
+
+            return poses3D.FirstOrDefault(p => p.FrameNumber == frameNumber);
+        }
+
+        /// <summary>
+        /// Get the closest 3D pose by timestamp.
+        /// </summary>
+        public Pose3D GetClosestPose3D(double timestampMs)
+        {
+            if (poses3D == null || poses3D.Count == 0)
+                return null;
+
+            Pose3D closest = null;
+            double minDiff = double.MaxValue;
+
+            foreach (var pose in poses3D)
+            {
+                double diff = Math.Abs(pose.TimestampMs - timestampMs);
+                if (diff < minDiff)
+                {
+                    minDiff = diff;
+                    closest = pose;
+                }
+            }
+
+            return closest;
+        }
+
+        #endregion
     }
 }

@@ -33,6 +33,15 @@ namespace Kinovea.PoseDetection
         public float? OverallHipAngle { get; set; }
         public float? OverallElbowAngle { get; set; }
 
+        // 3D-specific angles (when available from stereo triangulation)
+        public double? ShoulderRotation3D { get; set; }
+        public double? HipRotation3D { get; set; }
+        public double? XFactor3D { get; set; }
+        public double? ShoulderRotation3DAtImpact { get; set; }
+        public double? HipRotation3DAtImpact { get; set; }
+        public double? XFactor3DAtImpact { get; set; }
+        public bool Has3DData { get; set; }
+
         // For calculating weighted averages
         private float shoulderSum, shoulderWeightSum;
         private float hipSum, hipWeightSum;
@@ -165,6 +174,83 @@ namespace Kinovea.PoseDetection
             }
 
             stats.FinalizeOverall();
+            return stats;
+        }
+
+        /// <summary>
+        /// Update statistics from a 3D pose (from stereo triangulation).
+        /// </summary>
+        public void UpdateFrom3DPose(Pose3D pose)
+        {
+            if (pose == null)
+                return;
+
+            Has3DData = true;
+
+            // Calculate true 3D rotations
+            var shoulder = pose.CalculateShoulderRotation();
+            var hip = pose.CalculateHipRotation();
+            var xFactor = pose.CalculateXFactor();
+
+            if (!double.IsNaN(shoulder))
+                ShoulderRotation3D = shoulder;
+            if (!double.IsNaN(hip))
+                HipRotation3D = hip;
+            if (!double.IsNaN(xFactor))
+                XFactor3D = xFactor;
+        }
+
+        /// <summary>
+        /// Set 3D angles at impact frame.
+        /// </summary>
+        public void Set3DImpact(Pose3D pose)
+        {
+            if (pose == null)
+                return;
+
+            var shoulder = pose.CalculateShoulderRotation();
+            var hip = pose.CalculateHipRotation();
+            var xFactor = pose.CalculateXFactor();
+
+            if (!double.IsNaN(shoulder))
+                ShoulderRotation3DAtImpact = shoulder;
+            if (!double.IsNaN(hip))
+                HipRotation3DAtImpact = hip;
+            if (!double.IsNaN(xFactor))
+                XFactor3DAtImpact = xFactor;
+        }
+
+        /// <summary>
+        /// Calculate statistics from 3D poses (stereo triangulation).
+        /// </summary>
+        public static PoseStatistics CalculateFrom3DPoses(List<Pose3D> poses3D, List<PoseData> poses2D, float threshold = 0.25f)
+        {
+            // Start with 2D statistics
+            var stats = CalculateFromPoses(poses2D, threshold);
+            if (stats == null)
+                stats = new PoseStatistics();
+
+            if (poses3D == null || poses3D.Count == 0)
+                return stats;
+
+            stats.Has3DData = true;
+
+            // Find 3D pose at impact
+            if (stats.ImpactFrame >= 0)
+            {
+                var impactPose3D = poses3D.Find(p => p.FrameNumber == stats.ImpactFrame);
+                if (impactPose3D != null)
+                {
+                    stats.Set3DImpact(impactPose3D);
+                }
+            }
+
+            // Update current 3D from last pose
+            if (poses3D.Count > 0)
+            {
+                stats.UpdateFrom3DPose(poses3D[poses3D.Count - 1]);
+            }
+
             return stats;
         }
 
