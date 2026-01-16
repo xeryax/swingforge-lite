@@ -1189,10 +1189,17 @@ namespace Kinovea.ScreenManager
             // Check for existing valid cache - import directly into metadata
             if (PoseCache.IsValid(videoPath))
             {
-                log.DebugFormat("Loading pose cache for: {0}", Path.GetFileName(videoPath));
+                log.WarnFormat("Loading pose cache for: {0}", Path.GetFileName(videoPath));
                 poseCache = PoseCache.Load(videoPath);
                 ImportPoseToMetadata(poseCache);
                 view.UpdatePoseAnalysisStatus(100, true);
+                // Auto-enable pose statistics when loading from cache (only if stats were loaded)
+                if (poseStats != null && poseStatsRenderer != null)
+                {
+                    log.WarnFormat("Auto-enabling stats overlay after loading from cache");
+                    ToggleStatsOverlay(true);
+                }
+                view.RefreshImage();
                 return;
             }
 
@@ -1224,6 +1231,7 @@ namespace Kinovea.ScreenManager
 
             poseWorker.StartAnalysis(videoPath);
             view.UpdatePoseAnalysisStatus(0, false);
+            view.ToastMessage("Pose analysis started", 2000);
         }
 
         private string GetPoseModelPath()
@@ -1266,6 +1274,11 @@ namespace Kinovea.ScreenManager
                 view.BeginInvoke(new Action(() => {
                     ImportPoseToMetadata(cache);
                     view.UpdatePoseAnalysisStatus(100, true);
+                    // Auto-enable pose statistics when analysis completes (only if stats were loaded)
+                    if (poseStats != null && poseStatsRenderer != null)
+                    {
+                        ToggleStatsOverlay(true);
+                    }
                     view.RefreshImage();
                 }));
             }
@@ -1273,6 +1286,11 @@ namespace Kinovea.ScreenManager
             {
                 ImportPoseToMetadata(cache);
                 view.UpdatePoseAnalysisStatus(100, true);
+                // Auto-enable pose statistics when analysis completes (only if stats were loaded)
+                if (poseStats != null && poseStatsRenderer != null)
+                {
+                    ToggleStatsOverlay(true);
+                }
                 view.RefreshImage();
             }
         }
@@ -1291,6 +1309,16 @@ namespace Kinovea.ScreenManager
 
                 // Load pose statistics
                 poseStats = MetadataImporterYoloV8Pose.GetStatistics(videoPath);
+                if (poseStats == null)
+                {
+                    log.WarnFormat("Failed to load pose statistics from cache: {0}", videoPath);
+                }
+                else
+                {
+                    log.WarnFormat("Loaded pose statistics: impact frame: {0}, shoulder min/max: {1}/{2}", 
+                        poseStats.ImpactFrame, poseStats.ShoulderMin, poseStats.ShoulderMax);
+                }
+                
                 if (poseStatsRenderer == null)
                     poseStatsRenderer = new PoseStatsRenderer();
             }
@@ -1305,21 +1333,78 @@ namespace Kinovea.ScreenManager
         /// </summary>
         public void ToggleStatsOverlay(bool enabled)
         {
+            log.WarnFormat("ToggleStatsOverlay: {0}, poseStats={1}, poseStatsRenderer={2}", 
+                enabled, poseStats != null, poseStatsRenderer != null);
+            
             statsOverlayEnabled = enabled;
+            
+            // Update button state in UI and refresh display
+            if (view != null)
+            {
+                if (view.InvokeRequired)
+                {
+                    view.BeginInvoke(new Action(() => {
+                        view.SetStatsOverlayEnabled(enabled);
+                        view.RefreshImage();
+                    }));
+                }
+                else
+                {
+                    view.SetStatsOverlayEnabled(enabled);
+                    view.RefreshImage();
+                }
+            }
         }
 
         /// <summary>
         /// Draw statistics overlay if enabled.
+        /// Shows per-camera 2D pose statistics for each video.
         /// </summary>
         public void DrawStatsOverlay(Graphics g, int width, int height)
         {
-            if (!statsOverlayEnabled || poseStats == null || poseStatsRenderer == null)
+            // FORCE DRAW FOR TESTING: Always draw if poseStats exists, regardless of enabled flag
+            bool forceDraw = (poseStats != null && poseStatsRenderer != null);
+            
+            if (!statsOverlayEnabled && !forceDraw)
+            {
+                log.WarnFormat("DrawStatsOverlay: Skipping - enabled={0}, forceDraw={1}", statsOverlayEnabled, forceDraw);
                 return;
+            }
+                
+            if (poseStats == null)
+            {
+                log.WarnFormat("DrawStatsOverlay: poseStats is null");
+                return;
+            }
+            
+            if (poseStatsRenderer == null)
+            {
+                log.WarnFormat("DrawStatsOverlay: poseStatsRenderer is null");
+                return;
+            }
 
             // Update current angles based on current frame
             UpdateCurrentPoseStats();
 
-            poseStatsRenderer.Draw(g, poseStats, width, height);
+            try
+            {
+                if (forceDraw && !statsOverlayEnabled)
+                {
+                    log.WarnFormat("DrawStatsOverlay: FORCE DRAWING overlay at {0}x{1} (statsOverlayEnabled={2})", 
+                        width, height, statsOverlayEnabled);
+                }
+                else
+                {
+                    log.WarnFormat("DrawStatsOverlay: Drawing overlay at {0}x{1}", width, height);
+                }
+                
+                poseStatsRenderer.Draw(g, poseStats, width, height, centerPosition: false);
+                log.WarnFormat("DrawStatsOverlay: Successfully drew overlay");
+            }
+            catch (Exception ex)
+            {
+                log.ErrorFormat("Error drawing stats overlay: {0}\n{1}", ex.Message, ex.StackTrace);
+            }
         }
 
         private void UpdateCurrentPoseStats()

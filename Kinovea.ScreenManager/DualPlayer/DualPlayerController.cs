@@ -64,7 +64,8 @@ namespace Kinovea.ScreenManager
         // 3D pose triangulation
         private StereoTriangulator triangulator;
         private PoseFrameMatcher frameMatcher;
-        private List<Pose3D> poses3D;
+        private List<Pose3D> poses3D; // Legacy - kept for backward compatibility
+        private Pose3DCache pose3DCache; // Unified 3D cache keyed by frame number
                                                  
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         #endregion
@@ -351,6 +352,17 @@ namespace Kinovea.ScreenManager
 
             UpdateHairLines();
             
+            // Perform real-time triangulation when frames change
+            if (synching && !view.Merging)
+            {
+                TriangulateCurrentFrame();
+            }
+            else if (synching)
+            {
+                // Even if not triangulating, update debug panel with current frame from cache
+                Services.NotificationCenter.RaisePose3DUpdated(this);
+            }
+            
             if (!view.Merging || e.Value == null)
                 return;
 
@@ -539,6 +551,12 @@ namespace Kinovea.ScreenManager
         }
         private void Exit()
         {
+            // Save 3D cache before exiting
+            if (active)
+            {
+                Save3DCache();
+            }
+
             synching = false;
             dynamicSynching = false;
 
@@ -644,6 +662,9 @@ namespace Kinovea.ScreenManager
             view.UpdateSyncPosition(commonTimeline.GetCommonTime(players[0], players[0].LocalTimeOriginPhysical));
             UpdateHairLines();
 
+            // Load 3D cache if both videos are loaded
+            Load3DCache();
+
             log.Debug("Synchronization initialized.");
         }
 
@@ -666,6 +687,15 @@ namespace Kinovea.ScreenManager
             GotoTime(players[1], commonTime, allowUIUpdate);
 
             UpdateHairLines();
+            
+            // Perform real-time triangulation for current frame
+            TriangulateCurrentFrame();
+            
+            // Always notify debug panel (even if triangulation didn't happen, we still want to show current frame from cache)
+            if (synching && pose3DCache != null)
+            {
+                Services.NotificationCenter.RaisePose3DUpdated(this);
+            }
         }
         
         private void GotoTime(PlayerScreen player, long commonTime, bool allowUIUpdate)
@@ -735,7 +765,7 @@ namespace Kinovea.ScreenManager
         #region 3D Pose Triangulation
 
         /// <summary>
-        /// Get the list of triangulated 3D poses.
+        /// Get the list of triangulated 3D poses (legacy - for backward compatibility).
         /// </summary>
         public List<Pose3D> Poses3D
         {
@@ -747,7 +777,16 @@ namespace Kinovea.ScreenManager
         /// </summary>
         public bool Has3DPoses
         {
-            get { return poses3D != null && poses3D.Count > 0; }
+            get { return (pose3DCache != null && pose3DCache.Poses != null && pose3DCache.Poses.Count > 0) ||
+                          (poses3D != null && poses3D.Count > 0); }
+        }
+
+        /// <summary>
+        /// Get the unified 3D cache.
+        /// </summary>
+        public Pose3DCache Pose3DCache
+        {
+            get { return pose3DCache; }
         }
 
         /// <summary>
@@ -821,7 +860,7 @@ namespace Kinovea.ScreenManager
         }
 
         /// <summary>
-        /// Get the closest 3D pose by timestamp.
+        /// Get the closest 3D pose by timestamp (legacy method).
         /// </summary>
         public Pose3D GetClosestPose3D(double timestampMs)
         {
@@ -842,6 +881,184 @@ namespace Kinovea.ScreenManager
             }
 
             return closest;
+        }
+
+        /// <summary>
+        /// Load 3D cache for the current video pair.
+        /// </summary>
+        private void Load3DCache()
+        {
+            if (!active || players.Count < 2)
+                return;
+
+            string videoPathA = players[0].FilePath;
+            string videoPathB = players[1].FilePath;
+
+            if (string.IsNullOrEmpty(videoPathA) || string.IsNullOrEmpty(videoPathB))
+                return;
+
+            // Check if cache exists and is valid
+            if (Pose3DCache.IsValid(videoPathA, videoPathB))
+            {
+                pose3DCache = Pose3DCache.Load(videoPathA, videoPathB);
+                if (pose3DCache != null)
+                {
+                    log.DebugFormat("Loaded 3D cache: {0} poses", pose3DCache.Poses?.Count ?? 0);
+                }
+            }
+            else
+            {
+                // Create new cache
+                pose3DCache = new Pose3DCache();
+                log.Debug("Created new 3D cache");
+            }
+        }
+
+        /// <summary>
+        /// Save 3D cache to disk.
+        /// </summary>
+        public void Save3DCache()
+        {
+            if (pose3DCache == null || !active || players.Count < 2)
+                return;
+
+            string videoPathA = players[0].FilePath;
+            string videoPathB = players[1].FilePath;
+
+            if (string.IsNullOrEmpty(videoPathA) || string.IsNullOrEmpty(videoPathB))
+                return;
+
+            try
+            {
+                pose3DCache.Save(videoPathA, videoPathB);
+                log.DebugFormat("Saved 3D cache: {0} poses", pose3DCache.Poses?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                log.ErrorFormat("Failed to save 3D cache: {0}", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Get 3D pose for the current synchronized frame.
+        /// </summary>
+        public Pose3D GetPose3DForCurrentFrame()
+        {
+            if (pose3DCache == null || pose3DCache.Poses == null)
+                return null;
+
+            // Get current frame number from common timeline
+            // Convert common time to frame number (approximate)
+            long frameNumber = currentTime / (commonTimeline.FrameTime / 1000); // Convert microseconds to frame number
+
+            return pose3DCache.GetPose3D(frameNumber);
+        }
+
+        /// <summary>
+        /// Get current 3D statistics for display.
+        /// </summary>
+        public PoseStatistics GetCurrent3DStats()
+        {
+            var pose3D = GetPose3DForCurrentFrame();
+            if (pose3D == null)
+                return null;
+
+            var stats = new PoseStatistics();
+            stats.UpdateFrom3DPose(pose3D);
+            return stats;
+        }
+
+        /// <summary>
+        /// Triangulate 3D pose for the current synchronized frame.
+        /// </summary>
+        private void TriangulateCurrentFrame()
+        {
+            if (!active || !synching || players.Count < 2)
+                return;
+
+            if (triangulator == null || !triangulator.IsReady)
+            {
+                if (!InitializeTriangulation())
+                    return;
+            }
+
+            if (pose3DCache == null)
+            {
+                Load3DCache();
+                if (pose3DCache == null)
+                    return;
+            }
+
+            // Get pose caches from both players
+            var cacheA = players[0].GetPoseCache();
+            var cacheB = players[1].GetPoseCache();
+
+            if (cacheA == null || cacheB == null)
+            {
+                // Log only occasionally to avoid spam
+                return;
+            }
+
+            // Get current frame numbers using common timeline
+            long localTimeA = commonTimeline.GetLocalTime(players[0], currentTime);
+            long localTimeB = commonTimeline.GetLocalTime(players[1], currentTime);
+
+            // Convert timestamps to frame numbers (approximate)
+            long frameNumberA = localTimeA / (players[0].LocalFrameTime / 1000);
+            long frameNumberB = localTimeB / (players[1].LocalFrameTime / 1000);
+
+            // Get 2D poses for current frames
+            var poseA = cacheA.GetPoseForFrame(frameNumberA);
+            var poseB = cacheB.GetPoseForFrame(frameNumberB);
+
+            if (poseA == null || poseB == null)
+            {
+                // Missing pose data - log occasionally
+                return;
+            }
+
+            // Check if we already have this frame in cache
+            long commonFrameNumber = currentTime / (commonTimeline.FrameTime / 1000);
+            var existingPose = pose3DCache.GetPose3D(commonFrameNumber);
+            if (existingPose != null)
+            {
+                // Already triangulated - but still notify debug panel to update
+                Services.NotificationCenter.RaisePose3DUpdated(this);
+                return;
+            }
+
+            // Triangulate
+            var pose3D = triangulator.Triangulate3DPose(poseA, poseB);
+            if (pose3D == null)
+            {
+                log.DebugFormat("Triangulation failed for frame {0}", commonFrameNumber);
+                return;
+            }
+
+            // Transform to golf coordinates
+            pose3D = triangulator.TransformToGolfCoords(pose3D);
+            if (pose3D == null)
+            {
+                log.DebugFormat("Coordinate transformation failed for frame {0}", commonFrameNumber);
+                return;
+            }
+
+            // Set frame number to common frame number
+            pose3D.FrameNumber = commonFrameNumber;
+
+            // Store in cache
+            pose3DCache.AddOrUpdate(pose3D);
+
+            // Notify debug panel of update
+            Services.NotificationCenter.RaisePose3DUpdated(this);
+
+            // Log success occasionally
+            var quality = triangulator.GetQualityMetrics(pose3D);
+            if (quality != null)
+            {
+                log.DebugFormat("Triangulated frame {0}: {1} valid keypoints, confidence={2:F2}",
+                    commonFrameNumber, quality.ValidKeypointCount, quality.AverageConfidence);
+            }
         }
 
         #endregion

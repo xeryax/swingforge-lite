@@ -1,6 +1,6 @@
 #region license
 /*
-Copyright � Joan Charmant 2008.
+Copyright � Joan Charmant 2008.
 jcharmant@gmail.com
  
 This file is part of Kinovea.
@@ -37,6 +37,8 @@ using Kinovea.Camera;
 using Kinovea.FileBrowser.Languages;
 using Kinovea.Services;
 using Kinovea.Video;
+using Kinovea.PoseDetection;
+using Kinovea.ScreenManager;
 using BrightIdeasSoftware;
 using log4net.Layout;
 
@@ -66,6 +68,11 @@ namespace Kinovea.FileBrowser
         private BrowserContentType activeTab;
         private FileSystemWatcher fileWatcher = new FileSystemWatcher();
         private Stopwatch stopwatch = new Stopwatch();
+
+        // 3D Debug Panel
+        private DualPlayerController currentDualController;
+        private System.Windows.Forms.Panel panel3DDebug;
+        private System.Windows.Forms.TextBox txt3DDebug;
 
         #region Menu
         private ContextMenuStrip popMenuFolders = new ContextMenuStrip();
@@ -125,6 +132,7 @@ namespace Kinovea.FileBrowser
             NotificationCenter.FileOpened += NotificationCenter_FileOpened;
             NotificationCenter.FolderChangeAsked += NotificationCenter_FolderChangeAsked;
             NotificationCenter.FolderNavigationAsked += NotificationCenter_FolderNavigationAsked;
+            NotificationCenter.Pose3DUpdated += NotificationCenter_Pose3DUpdated;
 
             // Reload stored persistent information.
             ReloadShortcuts();
@@ -136,6 +144,141 @@ namespace Kinovea.FileBrowser
             
             Application.Idle += new EventHandler(this.IdleDetector);
             this.Hotkeys = HotkeySettingsManager.LoadHotkeys("FileExplorer");
+
+            // Initialize 3D debug panel
+            Initialize3DDebugPanel();
+        }
+
+        /// <summary>
+        /// Initialize the 3D debug panel.
+        /// </summary>
+        private void Initialize3DDebugPanel()
+        {
+            // Create debug panel (collapsible)
+            panel3DDebug = new System.Windows.Forms.Panel();
+            panel3DDebug.Dock = System.Windows.Forms.DockStyle.Bottom;
+            panel3DDebug.Height = 300;  // Increased from 150
+            panel3DDebug.BackColor = System.Drawing.Color.LightGray;
+            panel3DDebug.Visible = false;
+
+            // Create text box for debug info
+            txt3DDebug = new System.Windows.Forms.TextBox();
+            txt3DDebug.Multiline = true;
+            txt3DDebug.ReadOnly = true;
+            txt3DDebug.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            txt3DDebug.Dock = System.Windows.Forms.DockStyle.Fill;
+            txt3DDebug.Font = new System.Drawing.Font("Consolas", 12);  // Increased from 8
+            txt3DDebug.BackColor = System.Drawing.Color.White;
+
+            panel3DDebug.Controls.Add(txt3DDebug);
+            this.Controls.Add(panel3DDebug);
+            panel3DDebug.BringToFront();
+        }
+
+        /// <summary>
+        /// Update 3D debug information from DualPlayerController.
+        /// </summary>
+        public void Update3DDebugInfo(DualPlayerController controller)
+        {
+            if (controller == null)
+            {
+                currentDualController = null;
+                if (panel3DDebug != null)
+                    panel3DDebug.Visible = false;
+                return;
+            }
+
+            currentDualController = controller;
+
+            if (panel3DDebug == null || txt3DDebug == null)
+                return;
+
+            // Show panel if we have a controller
+            panel3DDebug.Visible = true;
+
+            // Get current 3D pose
+            var pose3D = controller.GetPose3DForCurrentFrame();
+            
+            if (pose3D == null)
+            {
+                txt3DDebug.Text = "3D Debug Info\n" +
+                    "Status: No 3D pose available for current frame\n" +
+                    "Cache: " + (controller.Pose3DCache != null ? controller.Pose3DCache.Poses?.Count.ToString() ?? "0" : "Not loaded") + " poses";
+                return;
+            }
+
+            // Get quality metrics
+            var triangulator = new StereoTriangulator();
+            var quality = triangulator.GetQualityMetrics(pose3D);
+
+            // Build debug info string
+            var debugInfo = new System.Text.StringBuilder();
+            debugInfo.AppendLine("3D Debug Info");
+            debugInfo.AppendLine("=============");
+            debugInfo.AppendLine($"Frame: {pose3D.FrameNumber}");
+            debugInfo.AppendLine($"Timestamp: {pose3D.TimestampMs:F1} ms");
+            debugInfo.AppendLine($"Status: Valid ({pose3D.ValidKeyPointCount} keypoints)");
+            debugInfo.AppendLine();
+
+            // Key coordinates
+            debugInfo.AppendLine("Key Coordinates:");
+            var ls = pose3D.GetKeyPoint(Pose3D.LEFT_SHOULDER);
+            var rs = pose3D.GetKeyPoint(Pose3D.RIGHT_SHOULDER);
+            var lh = pose3D.GetKeyPoint(Pose3D.LEFT_HIP);
+            var rh = pose3D.GetKeyPoint(Pose3D.RIGHT_HIP);
+
+            if (ls != null && ls.IsValid)
+                debugInfo.AppendLine($"  Left Shoulder:  X={ls.X:F4}, Y={ls.Y:F4}, Z={ls.Z:F4}");
+            else
+                debugInfo.AppendLine($"  Left Shoulder:  --");
+
+            if (rs != null && rs.IsValid)
+                debugInfo.AppendLine($"  Right Shoulder: X={rs.X:F4}, Y={rs.Y:F4}, Z={rs.Z:F4}");
+            else
+                debugInfo.AppendLine($"  Right Shoulder: --");
+
+            if (lh != null && lh.IsValid)
+                debugInfo.AppendLine($"  Left Hip:        X={lh.X:F4}, Y={lh.Y:F4}, Z={lh.Z:F4}");
+            else
+                debugInfo.AppendLine($"  Left Hip:        --");
+
+            if (rh != null && rh.IsValid)
+                debugInfo.AppendLine($"  Right Hip:       X={rh.X:F4}, Y={rh.Y:F4}, Z={rh.Z:F4}");
+            else
+                debugInfo.AppendLine($"  Right Hip:       --");
+
+            debugInfo.AppendLine();
+
+            // 3D Angles
+            debugInfo.AppendLine("3D Angles:");
+            var shoulderRot = pose3D.CalculateShoulderRotation();
+            var hipRot = pose3D.CalculateHipRotation();
+            var xFactor = pose3D.CalculateXFactor();
+
+            debugInfo.AppendLine($"  Shoulder Rotation: {(double.IsNaN(shoulderRot) ? "--" : $"{shoulderRot:F2}°")}");
+            debugInfo.AppendLine($"  Hip Rotation:       {(double.IsNaN(hipRot) ? "--" : $"{hipRot:F2}°")}");
+            debugInfo.AppendLine($"  X-Factor:           {(double.IsNaN(xFactor) ? "--" : $"{xFactor:F2}°")}");
+
+            debugInfo.AppendLine();
+
+            // Quality metrics
+            if (quality != null)
+            {
+                debugInfo.AppendLine("Quality Metrics:");
+                debugInfo.AppendLine($"  Valid Keypoints: {quality.ValidKeypointCount}");
+                debugInfo.AppendLine($"  Avg Confidence:  {quality.AverageConfidence:F2}");
+                debugInfo.AppendLine($"  Coordinate Range: {quality.GetCoordinateRange()}");
+            }
+
+            // Cache stats
+            if (controller.Pose3DCache != null)
+            {
+                var (total, valid, invalid) = controller.Pose3DCache.GetStatistics();
+                debugInfo.AppendLine();
+                debugInfo.AppendLine($"Cache: {total} total, {valid} valid, {invalid} invalid");
+            }
+
+            txt3DDebug.Text = debugInfo.ToString();
         }
 
         private void BuildContextMenu()
@@ -1087,6 +1230,24 @@ namespace Kinovea.FileBrowser
             }
             
             DoRefreshFileList(true);
+        }
+
+        /// <summary>
+        /// Handle 3D pose update notification.
+        /// </summary>
+        private void NotificationCenter_Pose3DUpdated(object sender, EventArgs<object> e)
+        {
+            if (e.Value is DualPlayerController controller)
+            {
+                if (this.InvokeRequired)
+                {
+                    this.BeginInvoke(new Action(() => Update3DDebugInfo(controller)));
+                }
+                else
+                {
+                    Update3DDebugInfo(controller);
+                }
+            }
         }
 
         /// <summary>
