@@ -78,6 +78,8 @@
     <Compile Include="AngleCalculator.cs" />
     <Compile Include="KalmanFilter2D.cs" />
     <Compile Include="KeyPoint.cs" />
+    <Compile Include="Pose3DCache.cs" />
+    <Compile Include="TriangulationQuality.cs" />
     <Compile Include="PoseAnalysisWorker.cs" />
     <Compile Include="PoseCache.cs" />
     <Compile Include="PoseData.cs" />

@@ -5749,6 +5749,17 @@ namespace Kinovea.ScreenManager
         }
 
         /// <summary>
+        /// Update the stats toggle button state.
+        /// </summary>
+        public void SetStatsOverlayEnabled(bool enabled)
+        {
+            if (btnToggleStats != null)
+            {
+                btnToggleStats.Checked = enabled;
+            }
+        }
+
+        /// <summary>
         /// Update the pose analysis status display.
         /// </summary>
         public void UpdatePoseAnalysisStatus(int progress, bool complete)

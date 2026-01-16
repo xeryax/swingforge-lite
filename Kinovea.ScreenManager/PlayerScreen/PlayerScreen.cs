@@ -1398,7 +1398,7 @@ namespace Kinovea.ScreenManager
                     log.WarnFormat("DrawStatsOverlay: Drawing overlay at {0}x{1}", width, height);
                 }
                 
-                poseStatsRenderer.Draw(g, poseStats, width, height, centerPosition: false);
+                poseStatsRenderer.Draw(g, poseStats, width, height, centerPosition: null);
                 log.WarnFormat("DrawStatsOverlay: Successfully drew overlay");
             }
             catch (Exception ex)

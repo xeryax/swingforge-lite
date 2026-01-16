@@ -73,6 +73,7 @@ namespace Kinovea.FileBrowser
         private DualPlayerController currentDualController;
         private System.Windows.Forms.Panel panel3DDebug;
         private System.Windows.Forms.TextBox txt3DDebug;
+        private System.Windows.Forms.SplitContainer splitContainer3DDebug;
 
         #region Menu
         private ContextMenuStrip popMenuFolders = new ContextMenuStrip();
@@ -154,12 +155,24 @@ namespace Kinovea.FileBrowser
         /// </summary>
         private void Initialize3DDebugPanel()
         {
-            // Create debug panel (collapsible)
+            // Create SplitContainer for resizing (like the other splitters in the UI)
+            // This will be added to the parent container alongside tabControl
+            splitContainer3DDebug = new System.Windows.Forms.SplitContainer();
+            splitContainer3DDebug.Dock = System.Windows.Forms.DockStyle.Fill;
+            splitContainer3DDebug.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            splitContainer3DDebug.SplitterWidth = 5;
+            splitContainer3DDebug.FixedPanel = System.Windows.Forms.FixedPanel.None;  // Allow resizing
+            splitContainer3DDebug.Visible = false;
+            splitContainer3DDebug.Panel2MinSize = 100;  // Minimum height for debug panel
+            splitContainer3DDebug.Panel2Collapsed = true;  // Start collapsed, will expand when needed
+
+            // Panel1 will contain the existing tabControl (we'll move it)
+            // Panel2 will contain the debug panel
+
+            // Create debug panel
             panel3DDebug = new System.Windows.Forms.Panel();
-            panel3DDebug.Dock = System.Windows.Forms.DockStyle.Bottom;
-            panel3DDebug.Height = 300;  // Increased from 150
+            panel3DDebug.Dock = System.Windows.Forms.DockStyle.Fill;
             panel3DDebug.BackColor = System.Drawing.Color.LightGray;
-            panel3DDebug.Visible = false;
 
             // Create text box for debug info
             txt3DDebug = new System.Windows.Forms.TextBox();
@@ -167,12 +180,14 @@ namespace Kinovea.FileBrowser
             txt3DDebug.ReadOnly = true;
             txt3DDebug.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             txt3DDebug.Dock = System.Windows.Forms.DockStyle.Fill;
-            txt3DDebug.Font = new System.Drawing.Font("Consolas", 12);  // Increased from 8
+            txt3DDebug.Font = new System.Drawing.Font("Consolas", 12);
             txt3DDebug.BackColor = System.Drawing.Color.White;
 
             panel3DDebug.Controls.Add(txt3DDebug);
-            this.Controls.Add(panel3DDebug);
-            panel3DDebug.BringToFront();
+            splitContainer3DDebug.Panel2.Controls.Add(panel3DDebug);
+            
+            // Set initial splitter distance (80% for main content, 20% for debug)
+            // This will be set when we make it visible
         }
 
         /// <summary>
@@ -183,18 +198,44 @@ namespace Kinovea.FileBrowser
             if (controller == null)
             {
                 currentDualController = null;
-                if (panel3DDebug != null)
-                    panel3DDebug.Visible = false;
+                if (splitContainer3DDebug != null)
+                    splitContainer3DDebug.Visible = false;
                 return;
             }
 
             currentDualController = controller;
 
-            if (panel3DDebug == null || txt3DDebug == null)
+            if (panel3DDebug == null || txt3DDebug == null || splitContainer3DDebug == null)
                 return;
 
-            // Show panel if we have a controller
-            panel3DDebug.Visible = true;
+            // Show split container if we have a controller
+            if (!splitContainer3DDebug.Visible)
+            {
+                // First time showing - need to restructure UI
+                // Move tabControl into Panel1 of splitContainer
+                if (tabControl.Parent == this)
+                {
+                    this.Controls.Remove(tabControl);
+                    splitContainer3DDebug.Panel1.Controls.Add(tabControl);
+                    tabControl.Dock = DockStyle.Fill;
+                }
+                
+                // Add splitContainer to main controls
+                if (!this.Controls.Contains(splitContainer3DDebug))
+                {
+                    this.Controls.Add(splitContainer3DDebug);
+                }
+                
+                // Set initial splitter position (80% for main, 20% for debug)
+                splitContainer3DDebug.SplitterDistance = (int)(this.Height * 0.8);
+                splitContainer3DDebug.Panel2Collapsed = false;
+                splitContainer3DDebug.Visible = true;
+                splitContainer3DDebug.BringToFront();
+            }
+            else
+            {
+                splitContainer3DDebug.Panel2Collapsed = false;
+            }
 
             // Get current 3D pose
             var pose3D = controller.GetPose3DForCurrentFrame();
@@ -217,7 +258,19 @@ namespace Kinovea.FileBrowser
             debugInfo.AppendLine("=============");
             debugInfo.AppendLine($"Frame: {pose3D.FrameNumber}");
             debugInfo.AppendLine($"Timestamp: {pose3D.TimestampMs:F1} ms");
-            debugInfo.AppendLine($"Status: Valid ({pose3D.ValidKeyPointCount} keypoints)");
+            
+            // Count valid keypoints (excluding NaN)
+            int validNonNaN = 0;
+            foreach (var kp in pose3D.KeyPoints)
+            {
+                if (kp != null && kp.IsValid && 
+                    !double.IsNaN(kp.X) && !double.IsNaN(kp.Y) && !double.IsNaN(kp.Z))
+                {
+                    validNonNaN++;
+                }
+            }
+            
+            debugInfo.AppendLine($"Status: {validNonNaN} valid keypoints (non-NaN) / {pose3D.ValidKeyPointCount} total");
             debugInfo.AppendLine();
 
             // Key coordinates
@@ -227,22 +280,22 @@ namespace Kinovea.FileBrowser
             var lh = pose3D.GetKeyPoint(Pose3D.LEFT_HIP);
             var rh = pose3D.GetKeyPoint(Pose3D.RIGHT_HIP);
 
-            if (ls != null && ls.IsValid)
+            if (ls != null && ls.IsValid && !double.IsNaN(ls.X) && !double.IsNaN(ls.Y) && !double.IsNaN(ls.Z))
                 debugInfo.AppendLine($"  Left Shoulder:  X={ls.X:F4}, Y={ls.Y:F4}, Z={ls.Z:F4}");
             else
                 debugInfo.AppendLine($"  Left Shoulder:  --");
 
-            if (rs != null && rs.IsValid)
+            if (rs != null && rs.IsValid && !double.IsNaN(rs.X) && !double.IsNaN(rs.Y) && !double.IsNaN(rs.Z))
                 debugInfo.AppendLine($"  Right Shoulder: X={rs.X:F4}, Y={rs.Y:F4}, Z={rs.Z:F4}");
             else
                 debugInfo.AppendLine($"  Right Shoulder: --");
 
-            if (lh != null && lh.IsValid)
+            if (lh != null && lh.IsValid && !double.IsNaN(lh.X) && !double.IsNaN(lh.Y) && !double.IsNaN(lh.Z))
                 debugInfo.AppendLine($"  Left Hip:        X={lh.X:F4}, Y={lh.Y:F4}, Z={lh.Z:F4}");
             else
                 debugInfo.AppendLine($"  Left Hip:        --");
 
-            if (rh != null && rh.IsValid)
+            if (rh != null && rh.IsValid && !double.IsNaN(rh.X) && !double.IsNaN(rh.Y) && !double.IsNaN(rh.Z))
                 debugInfo.AppendLine($"  Right Hip:       X={rh.X:F4}, Y={rh.Y:F4}, Z={rh.Z:F4}");
             else
                 debugInfo.AppendLine($"  Right Hip:       --");
@@ -276,6 +329,18 @@ namespace Kinovea.FileBrowser
                 var (total, valid, invalid) = controller.Pose3DCache.GetStatistics();
                 debugInfo.AppendLine();
                 debugInfo.AppendLine($"Cache: {total} total, {valid} valid, {invalid} invalid");
+            }
+            
+            // Add diagnostic info if coordinates are NaN
+            if (validNonNaN == 0 && pose3D.ValidKeyPointCount > 0)
+            {
+                debugInfo.AppendLine();
+                debugInfo.AppendLine("⚠️ WARNING: All coordinates are NaN!");
+                debugInfo.AppendLine("Possible causes:");
+                debugInfo.AppendLine("  - Calibration data missing or invalid");
+                debugInfo.AppendLine("  - Triangulation failed (check logs)");
+                debugInfo.AppendLine("  - Projection matrices not loaded");
+                debugInfo.AppendLine("  - Check: CalibrationManager has valid data");
             }
 
             txt3DDebug.Text = debugInfo.ToString();

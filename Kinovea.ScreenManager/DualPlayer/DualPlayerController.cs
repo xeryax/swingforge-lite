@@ -803,7 +803,7 @@ namespace Kinovea.ScreenManager
                 return false;
             }
 
-            log.Debug("Stereo triangulation initialized.");
+            log.DebugFormat("Stereo triangulation initialized. Calibration loaded: {0}", triangulator.IsReady);
             return true;
         }
 
@@ -1035,11 +1035,43 @@ namespace Kinovea.ScreenManager
                 return;
             }
 
+            // Validate before transformation - check for NaN explicitly
+            int validBeforeTransform = 0;
+            foreach (var kp in pose3D.KeyPoints)
+            {
+                if (kp != null && kp.IsValid && 
+                    !double.IsNaN(kp.X) && !double.IsNaN(kp.Y) && !double.IsNaN(kp.Z) &&
+                    !double.IsInfinity(kp.X) && !double.IsInfinity(kp.Y) && !double.IsInfinity(kp.Z))
+                {
+                    validBeforeTransform++;
+                }
+            }
+            
+            if (validBeforeTransform < 5)
+            {
+                log.WarnFormat("Triangulation validation failed for frame {0}: only {1} valid (non-NaN) keypoints", 
+                    commonFrameNumber, validBeforeTransform);
+                return;
+            }
+            
+            if (!triangulator.ValidateTriangulation(pose3D))
+            {
+                log.WarnFormat("Triangulation validation failed for frame {0} - invalid coordinates", commonFrameNumber);
+                return;
+            }
+
             // Transform to golf coordinates
             pose3D = triangulator.TransformToGolfCoords(pose3D);
             if (pose3D == null)
             {
                 log.DebugFormat("Coordinate transformation failed for frame {0}", commonFrameNumber);
+                return;
+            }
+
+            // Validate again after transformation
+            if (!triangulator.ValidateTriangulation(pose3D))
+            {
+                log.DebugFormat("Post-transformation validation failed for frame {0}", commonFrameNumber);
                 return;
             }
 

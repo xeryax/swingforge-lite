@@ -35,7 +35,8 @@ namespace Kinovea.PoseDetection
         /// <param name="stats">Pose statistics to display</param>
         /// <param name="width">Display width</param>
         /// <param name="height">Display height</param>
-        public void Draw(Graphics g, PoseStatistics stats, int width, int height)
+        /// <param name="centerPosition">Optional center position. If null, positions in top-right corner.</param>
+        public void Draw(Graphics g, PoseStatistics stats, int width, int height, PointF? centerPosition = null)
         {
             if (stats == null)
                 return;
@@ -48,9 +49,20 @@ namespace Kinovea.PoseDetection
             float panelWidth = 280;
             float panelHeight = lineHeight * 6 + titleFont.GetHeight(g) + padding * 2;
 
-            // Position in top-right corner
-            float x = width - panelWidth - padding;
-            float y = padding;
+            // Position based on centerPosition parameter
+            float x, y;
+            if (centerPosition.HasValue)
+            {
+                // Center around the specified point
+                x = centerPosition.Value.X - panelWidth / 2;
+                y = centerPosition.Value.Y - panelHeight / 2;
+            }
+            else
+            {
+                // Position in top-right corner
+                x = width - panelWidth - padding;
+                y = padding;
+            }
 
             // Draw background
             RectangleF bgRect = new RectangleF(x, y, panelWidth, panelHeight);

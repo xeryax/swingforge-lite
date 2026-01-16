@@ -235,5 +235,17 @@ namespace Kinovea.Services
             ReceivedExternalCommand?.Invoke(null, new EventArgs<string>(name));
         }
         #endregion
+
+        #region 3D Pose Updates
+
+        /// <summary>
+        /// Event raised when 3D pose data is updated (for debug panel).
+        /// </summary>
+        public static EventHandler<EventArgs<object>> Pose3DUpdated;
+        public static void RaisePose3DUpdated(object controller)
+        {
+            Pose3DUpdated?.Invoke(null, new EventArgs<object>(controller));
+        }
+        #endregion
     }
 }
