@@ -206,15 +206,35 @@ namespace Kinovea.PoseDetection
             };
 
             // Extract keypoints (17 keypoints, each with x, y, confidence)
+            // YOLOv8-pose outputs keypoint confidence values (typically already in 0-1 range)
+            float maxRawConf = 0;
+            float minRawConf = float.MaxValue;
             for (int k = 0; k < 17; k++)
             {
                 int baseIdx = 5 + k * 3;
                 float kpX = output[0, baseIdx, bestIdx] / inputWidth;
                 float kpY = output[0, baseIdx + 1, bestIdx] / inputHeight;
-                float kpConf = output[0, baseIdx + 2, bestIdx];
+                float kpConfRaw = output[0, baseIdx + 2, bestIdx];
+                
+                // Track raw confidence range for diagnostics
+                if (kpConfRaw > maxRawConf) maxRawConf = kpConfRaw;
+                if (kpConfRaw < minRawConf) minRawConf = kpConfRaw;
+                
+                // YOLOv8-pose typically outputs confidence in 0-1 range already
+                // But some models might output logits that need sigmoid
+                float kpConf = kpConfRaw;
+                if (kpConfRaw < -5.0f || kpConfRaw > 5.0f)
+                {
+                    // Likely logit form, apply sigmoid: 1 / (1 + exp(-x))
+                    kpConf = 1.0f / (1.0f + (float)Math.Exp(-kpConfRaw));
+                }
+                // Clamp to [0, 1] range
+                kpConf = Math.Max(0.0f, Math.Min(1.0f, kpConf));
 
                 pose.KeyPoints[k] = new KeyPoint(k, kpX, kpY, kpConf);
             }
+            
+            // Note: Raw confidence values are logged in DualPlayerController if they seem suspiciously low
 
             // Calculate angles
             AngleCalculator.CalculateAllAngles(pose, ConfidenceThreshold);

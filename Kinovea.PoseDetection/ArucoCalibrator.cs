@@ -175,6 +175,13 @@ namespace Kinovea.PoseDetection
                 // Estimate camera intrinsics from image dimensions
                 var cameraMatrix = EstimateCameraMatrix(frame.Width, frame.Height);
                 calibration.CameraMatrix = MatToArray2D(cameraMatrix);
+                
+                // Validate camera matrix was copied correctly (third row should be [0, 0, 1])
+                if (calibration.CameraMatrix[2, 0] != 0 || calibration.CameraMatrix[2, 1] != 0 || calibration.CameraMatrix[2, 2] != 1)
+                {
+                    throw new InvalidOperationException($"Camera matrix third row invalid: [{calibration.CameraMatrix[2, 0]}, {calibration.CameraMatrix[2, 1]}, {calibration.CameraMatrix[2, 2]}]");
+                }
+                
                 calibration.DistortionCoeffs = new double[5]; // Assume no distortion for now
 
                 // Define 3D object points for the marker (marker centered at origin, lying in XY plane)
@@ -261,6 +268,7 @@ namespace Kinovea.PoseDetection
             double cx = width / 2.0;
             double cy = height / 2.0;
 
+            // Initialize as identity matrix to ensure third row is [0, 0, 1]
             var K = new Mat(3, 3, MatType.CV_64F);
             K.Set(0, 0, focalLength);
             K.Set(0, 1, 0);
@@ -268,9 +276,10 @@ namespace Kinovea.PoseDetection
             K.Set(1, 0, 0);
             K.Set(1, 1, focalLength);
             K.Set(1, 2, cy);
-            K.Set(2, 0, 0);
-            K.Set(2, 1, 0);
-            K.Set(2, 2, 1);
+            // Explicitly set third row to [0, 0, 1] to avoid uninitialized memory
+            K.Set(2, 0, 0.0);
+            K.Set(2, 1, 0.0);
+            K.Set(2, 2, 1.0);
 
             return K;
         }
@@ -287,15 +296,37 @@ namespace Kinovea.PoseDetection
                 // Convert rotation vector to rotation matrix
                 Cv2.Rodrigues(rvec, R);
 
+                // Validate R is valid (3x3 rotation matrix)
+                if (R.Rows != 3 || R.Cols != 3)
+                {
+                    throw new InvalidOperationException("Invalid rotation matrix dimensions");
+                }
+
                 // Build [R | t] (3x4 matrix)
                 var Rt = new Mat(3, 4, MatType.CV_64F);
                 for (int i = 0; i < 3; i++)
                 {
                     for (int j = 0; j < 3; j++)
                     {
-                        Rt.Set(i, j, R.At<double>(i, j));
+                        double rVal = R.At<double>(i, j);
+                        if (double.IsNaN(rVal) || double.IsInfinity(rVal))
+                        {
+                            throw new InvalidOperationException($"Invalid rotation matrix value at [{i},{j}]: {rVal}");
+                        }
+                        Rt.Set(i, j, rVal);
                     }
-                    Rt.Set(i, 3, tvec.At<double>(i));
+                    double tVal = tvec.At<double>(i);
+                    if (double.IsNaN(tVal) || double.IsInfinity(tVal))
+                    {
+                        throw new InvalidOperationException($"Invalid translation value at [{i}]: {tVal}");
+                    }
+                    Rt.Set(i, 3, tVal);
+                }
+
+                // Validate camera matrix before use
+                if (cameraMatrix == null || cameraMatrix.Empty() || cameraMatrix.Rows != 3 || cameraMatrix.Cols != 3)
+                {
+                    throw new InvalidOperationException("Invalid camera matrix");
                 }
 
                 // P = K * [R | t] - manual matrix multiplication (3x3 * 3x4 = 3x4)
@@ -306,8 +337,28 @@ namespace Kinovea.PoseDetection
                         double sum = 0;
                         for (int k = 0; k < 3; k++)
                         {
-                            sum += cameraMatrix.At<double>(i, k) * Rt.At<double>(k, j);
+                            double kVal = cameraMatrix.At<double>(i, k);
+                            double rtVal = Rt.At<double>(k, j);
+                            
+                            // Check for NaN/Infinity before multiplication
+                            if (double.IsNaN(kVal) || double.IsInfinity(kVal))
+                            {
+                                throw new InvalidOperationException($"Invalid camera matrix value at [{i},{k}]: {kVal}");
+                            }
+                            if (double.IsNaN(rtVal) || double.IsInfinity(rtVal))
+                            {
+                                throw new InvalidOperationException($"Invalid [R|t] value at [{k},{j}]: {rtVal}");
+                            }
+                            
+                            sum += kVal * rtVal;
                         }
+                        
+                        // Validate result
+                        if (double.IsNaN(sum) || double.IsInfinity(sum))
+                        {
+                            throw new InvalidOperationException($"Matrix multiplication produced invalid value at [{i},{j}]");
+                        }
+                        
                         P[i, j] = sum;
                     }
                 }

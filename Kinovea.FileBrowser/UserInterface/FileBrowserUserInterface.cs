@@ -242,9 +242,33 @@ namespace Kinovea.FileBrowser
             
             if (pose3D == null)
             {
-                txt3DDebug.Text = "3D Debug Info\n" +
-                    "Status: No 3D pose available for current frame\n" +
-                    "Cache: " + (controller.Pose3DCache != null ? controller.Pose3DCache.Poses?.Count.ToString() ?? "0" : "Not loaded") + " poses";
+                var statusInfo = new System.Text.StringBuilder();
+                statusInfo.AppendLine("3D Debug Info");
+                statusInfo.AppendLine("=============");
+                statusInfo.AppendLine("Status: No 3D pose available for current frame");
+                statusInfo.AppendLine();
+                statusInfo.AppendLine("Triangulation Status:");
+                string status = controller != null ? controller.GetTriangulationStatus() : "DualPlayerController not available";
+                statusInfo.AppendLine("  " + status);
+                statusInfo.AppendLine();
+                statusInfo.AppendLine("Cache: " + (controller != null && controller.Pose3DCache != null ? controller.Pose3DCache.Poses?.Count.ToString() ?? "0" : "Not loaded") + " poses");
+                
+                // Get diagnostic info from last triangulation attempt if available
+                if (controller.Pose3DCache != null && controller.Pose3DCache.Poses != null && controller.Pose3DCache.Poses.Count > 0)
+                {
+                    var (total, valid, invalid) = controller.Pose3DCache.GetStatistics();
+                    statusInfo.AppendLine($"  Total: {total}, Valid: {valid}, Invalid: {invalid}");
+                }
+                
+                // Show last diagnostic breakdown if triangulation is failing
+                if (status.Contains("Triangulation failed"))
+                {
+                    statusInfo.AppendLine();
+                    statusInfo.AppendLine("Last Diagnostic Breakdown:");
+                    statusInfo.AppendLine("  " + status.Replace("Triangulation failed - ", ""));
+                }
+                
+                txt3DDebug.Text = statusInfo.ToString();
                 return;
             }
 

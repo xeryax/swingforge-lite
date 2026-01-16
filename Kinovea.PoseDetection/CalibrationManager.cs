@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Kinovea.Services;
 
 namespace Kinovea.PoseDetection
 {
@@ -10,7 +11,7 @@ namespace Kinovea.PoseDetection
     {
         private static readonly string CalibrationFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SwingForge");
+            Software.ApplicationName);
 
         private static readonly string CalibrationFilePath = Path.Combine(
             CalibrationFolder, "camera_calibration.json");

@@ -66,6 +66,8 @@ namespace Kinovea.ScreenManager
         private PoseFrameMatcher frameMatcher;
         private List<Pose3D> poses3D; // Legacy - kept for backward compatibility
         private Pose3DCache pose3DCache; // Unified 3D cache keyed by frame number
+        private string lastTriangulationDiagnostics; // Last diagnostic breakdown for debug display
+        private long lastTriangulationFrame; // Frame number of last triangulation attempt
                                                  
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         #endregion
@@ -947,10 +949,29 @@ namespace Kinovea.ScreenManager
             if (pose3DCache == null || pose3DCache.Poses == null)
                 return null;
 
-            // Get current frame number from common timeline
-            // Convert common time to frame number (approximate)
-            long frameNumber = currentTime / (commonTimeline.FrameTime / 1000); // Convert microseconds to frame number
-
+            // Get current frame numbers from both players (same logic as TriangulateCurrentFrame)
+            var cacheA = players[0].GetPoseCache();
+            var cacheB = players[1].GetPoseCache();
+            if (cacheA != null && cacheB != null)
+            {
+                long localTimeA = commonTimeline.GetLocalTime(players[0], currentTime);
+                long localTimeB = commonTimeline.GetLocalTime(players[1], currentTime);
+                long frameNumberA = players[0].LocalFrameTime > 0 ? localTimeA / players[0].LocalFrameTime : 0;
+                long frameNumberB = players[1].LocalFrameTime > 0 ? localTimeB / players[1].LocalFrameTime : 0;
+                
+                // Get the actual poses to see what frame numbers they have
+                var poseA = cacheA.GetPoseForFrame(frameNumberA);
+                var poseB = cacheB.GetPoseForFrame(frameNumberB);
+                if (poseA != null && poseB != null)
+                {
+                    // Use the actual frame number from the retrieved pose (should match what we stored)
+                    long actualFrameNumber = poseA.FrameNumber;
+                    return pose3DCache.GetPose3D(actualFrameNumber);
+                }
+            }
+            
+            // Fallback: use common frame number
+            long frameNumber = commonTimeline.FrameTime > 0 ? currentTime / commonTimeline.FrameTime : 0;
             return pose3DCache.GetPose3D(frameNumber);
         }
 
@@ -969,24 +990,103 @@ namespace Kinovea.ScreenManager
         }
 
         /// <summary>
+        /// Get triangulation status information for debug display.
+        /// </summary>
+        public string GetTriangulationStatus()
+        {
+            if (!active || players.Count < 2)
+                return "Not active or insufficient players";
+            
+            if (!synching)
+                return "Synchronization not enabled";
+            
+            if (triangulator == null || !triangulator.IsReady)
+                return triangulator == null ? "Triangulator not initialized" : 
+                       (triangulator.LastError ?? "Triangulator not ready (check calibration)");
+            
+            if (pose3DCache == null)
+                return "3D cache not loaded";
+            
+            // Get pose caches from both players
+            var cacheA = players[0].GetPoseCache();
+            var cacheB = players[1].GetPoseCache();
+            
+            if (cacheA == null || cacheB == null)
+                return string.Format("Missing pose caches (A={0}, B={1})", cacheA != null, cacheB != null);
+            
+            // Get current frame numbers
+            long localTimeA = commonTimeline.GetLocalTime(players[0], currentTime);
+            long localTimeB = commonTimeline.GetLocalTime(players[1], currentTime);
+            // LocalFrameTime is in microseconds per frame, localTimeA/B are in microseconds
+            long frameNumberA = players[0].LocalFrameTime > 0 ? localTimeA / players[0].LocalFrameTime : 0;
+            long frameNumberB = players[1].LocalFrameTime > 0 ? localTimeB / players[1].LocalFrameTime : 0;
+            // FrameTime is in microseconds per frame, currentTime is in microseconds
+            long commonFrameNumber = commonTimeline.FrameTime > 0 ? currentTime / commonTimeline.FrameTime : 0;
+            
+            var poseA = cacheA.GetPoseForFrame(frameNumberA);
+            var poseB = cacheB.GetPoseForFrame(frameNumberB);
+            
+            if (poseA == null || poseB == null)
+                return string.Format("Missing 2D poses for frame {0} (A={1}, B={2})", 
+                    commonFrameNumber, poseA != null, poseB != null);
+            
+            // Check if pose exists in cache
+            var existingPose = pose3DCache.GetPose3D(commonFrameNumber);
+            if (existingPose != null)
+            {
+                int validCount = 0;
+                foreach (var kp in existingPose.KeyPoints)
+                {
+                    if (kp != null && kp.IsValid && 
+                        !double.IsNaN(kp.X) && !double.IsNaN(kp.Y) && !double.IsNaN(kp.Z))
+                        validCount++;
+                }
+                return string.Format("Frame {0}: {1} valid keypoints (cached)", commonFrameNumber, validCount);
+            }
+            
+            // Show last diagnostic details if available
+            if (!string.IsNullOrEmpty(lastTriangulationDiagnostics) && lastTriangulationFrame == commonFrameNumber)
+            {
+                return string.Format("Triangulation failed - {0}", lastTriangulationDiagnostics);
+            }
+            
+            return "Ready - triangulation will occur on frame change";
+        }
+
+        /// <summary>
         /// Triangulate 3D pose for the current synchronized frame.
         /// </summary>
         private void TriangulateCurrentFrame()
         {
-            if (!active || !synching || players.Count < 2)
+            if (!active || players.Count < 2)
+            {
+                log.DebugFormat("TriangulateCurrentFrame: not active or not enough players (active={0}, players={1})", active, players.Count);
                 return;
+            }
+
+            if (!synching)
+            {
+                log.Debug("TriangulateCurrentFrame: synching is false - synchronization must be enabled");
+                return;
+            }
 
             if (triangulator == null || !triangulator.IsReady)
             {
                 if (!InitializeTriangulation())
+                {
+                    log.Warn("TriangulateCurrentFrame: failed to initialize triangulation");
                     return;
+                }
             }
 
             if (pose3DCache == null)
             {
                 Load3DCache();
                 if (pose3DCache == null)
+                {
+                    log.Warn("TriangulateCurrentFrame: failed to load/create 3D cache");
                     return;
+                }
             }
 
             // Get pose caches from both players
@@ -995,7 +1095,7 @@ namespace Kinovea.ScreenManager
 
             if (cacheA == null || cacheB == null)
             {
-                // Log only occasionally to avoid spam
+                log.DebugFormat("TriangulateCurrentFrame: missing pose caches (cacheA={0}, cacheB={1})", cacheA != null, cacheB != null);
                 return;
             }
 
@@ -1003,23 +1103,60 @@ namespace Kinovea.ScreenManager
             long localTimeA = commonTimeline.GetLocalTime(players[0], currentTime);
             long localTimeB = commonTimeline.GetLocalTime(players[1], currentTime);
 
-            // Convert timestamps to frame numbers (approximate)
-            long frameNumberA = localTimeA / (players[0].LocalFrameTime / 1000);
-            long frameNumberB = localTimeB / (players[1].LocalFrameTime / 1000);
+            // Convert timestamps to frame numbers
+            // LocalFrameTime is in microseconds per frame, localTimeA/B are in microseconds
+            // So frame number = time / frameTime (no division by 1000 needed)
+            long frameNumberA = players[0].LocalFrameTime > 0 ? localTimeA / players[0].LocalFrameTime : 0;
+            long frameNumberB = players[1].LocalFrameTime > 0 ? localTimeB / players[1].LocalFrameTime : 0;
 
+            // Get current frame number from common timeline (calculate before getting poses)
+            long commonFrameNumber = currentTime / (commonTimeline.FrameTime / 1000);
+            
             // Get 2D poses for current frames
             var poseA = cacheA.GetPoseForFrame(frameNumberA);
             var poseB = cacheB.GetPoseForFrame(frameNumberB);
 
             if (poseA == null || poseB == null)
             {
-                // Missing pose data - log occasionally
+                log.DebugFormat("TriangulateCurrentFrame: missing pose data for frame {0} (poseA={1}, poseB={2}, frameA={3}, frameB={4})", 
+                    commonFrameNumber, poseA != null, poseB != null, frameNumberA, frameNumberB);
                 return;
             }
+            
+            // Diagnostic: Log frame numbers and confidence values to identify frame mismatch
+            log.DebugFormat("Frame {0}: Requested frameA={1}, frameB={2}, Got poseA.frame={3}, poseB.frame={4}", 
+                commonFrameNumber, frameNumberA, frameNumberB, poseA.FrameNumber, poseB.FrameNumber);
+            
+            // Diagnostic: Log sample confidence values from both cameras
+            if (poseA.KeyPoints != null && poseB.KeyPoints != null && poseA.KeyPoints.Length >= 4 && poseB.KeyPoints.Length >= 4)
+            {
+                log.DebugFormat("Frame {0}: Camera A confidences: kp0={1:F3}, kp1={2:F3}, kp2={3:F3}, kp3={4:F3}", 
+                    commonFrameNumber,
+                    poseA.KeyPoints[0]?.Confidence ?? 0f,
+                    poseA.KeyPoints[1]?.Confidence ?? 0f,
+                    poseA.KeyPoints[2]?.Confidence ?? 0f,
+                    poseA.KeyPoints[3]?.Confidence ?? 0f);
+                log.DebugFormat("Frame {0}: Camera B confidences: kp0={1:F3}, kp1={2:F3}, kp2={3:F3}, kp3={4:F3}", 
+                    commonFrameNumber,
+                    poseB.KeyPoints[0]?.Confidence ?? 0f,
+                    poseB.KeyPoints[1]?.Confidence ?? 0f,
+                    poseB.KeyPoints[2]?.Confidence ?? 0f,
+                    poseB.KeyPoints[3]?.Confidence ?? 0f);
+            }
 
-            // Check if we already have this frame in cache
-            long commonFrameNumber = currentTime / (commonTimeline.FrameTime / 1000);
-            var existingPose = pose3DCache.GetPose3D(commonFrameNumber);
+            // Use the actual frame numbers from the retrieved poses (they should match since we're using synchronized timeline)
+            // But if they differ, use the average or the one from poseA
+            long actualFrameNumber = poseA.FrameNumber;
+            if (poseA.FrameNumber != poseB.FrameNumber)
+            {
+                // If frame numbers don't match, use the average (should be close)
+                actualFrameNumber = (poseA.FrameNumber + poseB.FrameNumber) / 2;
+                log.DebugFormat("Frame number mismatch: poseA.frame={0}, poseB.frame={1}, using average={2}", 
+                    poseA.FrameNumber, poseB.FrameNumber, actualFrameNumber);
+            }
+            
+            // Check if we already have this frame in cache (use actual frame number, not commonFrameNumber)
+            var existingPose = pose3DCache.GetPose3D(actualFrameNumber);
             if (existingPose != null)
             {
                 // Already triangulated - but still notify debug panel to update
@@ -1029,28 +1166,179 @@ namespace Kinovea.ScreenManager
 
             // Triangulate
             var pose3D = triangulator.Triangulate3DPose(poseA, poseB);
+            
+            // Capture LastError immediately after triangulation (before any other operations)
+            string triangulationErrorDetails = triangulator != null ? (triangulator.LastError ?? "none") : "triangulator null";
+            
             if (pose3D == null)
             {
-                log.DebugFormat("Triangulation failed for frame {0}", commonFrameNumber);
+                log.DebugFormat("Triangulation failed for frame {0}, LastError: {1}", commonFrameNumber, triangulationErrorDetails);
                 return;
             }
 
-            // Validate before transformation - check for NaN explicitly
-            int validBeforeTransform = 0;
-            foreach (var kp in pose3D.KeyPoints)
+            // DEBUG: Log what we received from Triangulate3DPose
+            log.DebugFormat("=== DUALPLAYER RECEIVED POSE (Frame {0}) ===", commonFrameNumber);
+            log.DebugFormat("pose3D.KeyPoints.Length = {0}", pose3D.KeyPoints != null ? pose3D.KeyPoints.Length : 0);
+            if (pose3D.KeyPoints != null)
             {
-                if (kp != null && kp.IsValid && 
-                    !double.IsNaN(kp.X) && !double.IsNaN(kp.Y) && !double.IsNaN(kp.Z) &&
-                    !double.IsInfinity(kp.X) && !double.IsInfinity(kp.Y) && !double.IsInfinity(kp.Z))
+                for (int i = 0; i < pose3D.KeyPoints.Length; i++)
                 {
-                    validBeforeTransform++;
+                    var kp = pose3D.KeyPoints[i];
+                    if (kp != null)
+                    {
+                        log.DebugFormat("KP{0}: IsValid={1}, coords=({2:F3},{3:F3},{4:F3})",
+                            i, kp.IsValid, kp.X, kp.Y, kp.Z);
+                    }
+                    else
+                    {
+                        log.DebugFormat("KP{0}: NULL", i);
+                    }
                 }
             }
-            
-            if (validBeforeTransform < 5)
+
+            // Check for duplicate coordinates (all keypoints having same X,Y,Z) - indicates triangulation bug
+            bool allSame = true;
+            double? firstX = null, firstY = null, firstZ = null;
+            int validCount = 0;
+            log.DebugFormat("=== COUNTING VALID KEYPOINTS (Frame {0}) ===", commonFrameNumber);
+            int index = 0;
+            foreach (var kp in pose3D.KeyPoints)
             {
-                log.WarnFormat("Triangulation validation failed for frame {0}: only {1} valid (non-NaN) keypoints", 
-                    commonFrameNumber, validBeforeTransform);
+                bool isNull = kp == null;
+                bool isValid = kp != null && kp.IsValid;
+                bool hasNaN = kp != null && (double.IsNaN(kp.X) || double.IsNaN(kp.Y) || double.IsNaN(kp.Z));
+                bool hasInf = kp != null && (double.IsInfinity(kp.X) || double.IsInfinity(kp.Y) || double.IsInfinity(kp.Z));
+                bool passesCheck = kp != null && kp.IsValid && 
+                    !double.IsNaN(kp.X) && !double.IsNaN(kp.Y) && !double.IsNaN(kp.Z) &&
+                    !double.IsInfinity(kp.X) && !double.IsInfinity(kp.Y) && !double.IsInfinity(kp.Z);
+                
+                log.DebugFormat("COUNT KP{0}: null={1}, IsValid={2}, hasNaN={3}, hasInf={4}, passesCheck={5}, coords=({6:F3},{7:F3},{8:F3})",
+                    index, isNull, isValid, hasNaN, hasInf, passesCheck,
+                    kp != null ? kp.X : 0, kp != null ? kp.Y : 0, kp != null ? kp.Z : 0);
+                
+                if (passesCheck)
+                {
+                    validCount++;
+                    if (firstX == null)
+                    {
+                        firstX = kp.X;
+                        firstY = kp.Y;
+                        firstZ = kp.Z;
+                    }
+                    else
+                    {
+                        if (Math.Abs(kp.X - firstX.Value) > 1e-6 || 
+                            Math.Abs(kp.Y - firstY.Value) > 1e-6 || 
+                            Math.Abs(kp.Z - firstZ.Value) > 1e-6)
+                        {
+                            allSame = false;
+                            // Don't break - continue counting all valid keypoints
+                            // The break was causing only the first 2 keypoints to be counted
+                        }
+                    }
+                }
+                index++;
+            }
+            log.DebugFormat("=== COUNTING COMPLETE: validCount={0} ===", validCount);
+            
+            if (allSame && validCount > 1)
+            {
+                log.WarnFormat("Triangulation bug detected for frame {0}: all {1} valid keypoints have identical coordinates ({2:F4}, {3:F4}, {4:F4})", 
+                    commonFrameNumber, validCount, firstX ?? 0, firstY ?? 0, firstZ ?? 0);
+                return; // Don't store invalid triangulation
+            }
+            
+            if (validCount < 5)
+            {
+                // Calculate diagnostic details directly from the input poses
+                // Count ALL keypoints based on input confidence values (same logic as StereoTriangulator)
+                int zeroConfCount = 0;
+                int lowConfCount = 0;
+                int failedCount = 0;
+                int totalKeypoints = 17; // COCO has 17 keypoints
+                
+                if (pose3D.KeyPoints != null && poseA.KeyPoints != null && poseB.KeyPoints != null)
+                {
+                    int numKeypoints = Math.Min(17, Math.Min(pose3D.KeyPoints.Length, Math.Min(poseA.KeyPoints.Length, poseB.KeyPoints.Length)));
+                    for (int i = 0; i < numKeypoints; i++)
+                    {
+                        var kp = pose3D.KeyPoints[i];
+                        var kpA = poseA.KeyPoints[i];
+                        var kpB = poseB.KeyPoints[i];
+                        
+                        // Categorize based on INPUT confidence values (same logic as StereoTriangulator.Triangulate3DPose)
+                        if (kpA == null || kpB == null || kpA.Confidence <= 0.0f || kpB.Confidence <= 0.0f)
+                        {
+                            zeroConfCount++;
+                        }
+                        else if (kpA.Confidence < 0.10f || kpB.Confidence < 0.10f)
+                        {
+                            lowConfCount++;
+                        }
+                        else
+                        {
+                            // Both have confidence >= 0.10
+                            // Check if triangulation succeeded (valid and non-NaN)
+                            bool isKeypointValid = kp != null && kp.IsValid && 
+                                !double.IsNaN(kp.X) && !double.IsNaN(kp.Y) && !double.IsNaN(kp.Z) &&
+                                !double.IsInfinity(kp.X) && !double.IsInfinity(kp.Y) && !double.IsInfinity(kp.Z);
+                            
+                            if (isKeypointValid)
+                            {
+                                // This is counted in validCount - don't double count
+                                // (validCount already includes this)
+                            }
+                            else
+                            {
+                                // Both have good confidence, but triangulation failed
+                                failedCount++;
+                            }
+                        }
+                    }
+                }
+                
+                // Verify counts add up: validCount + zeroConfCount + lowConfCount + failedCount should equal totalKeypoints
+                int accountedFor = validCount + zeroConfCount + lowConfCount + failedCount;
+                if (accountedFor != totalKeypoints)
+                {
+                    // Adjust failedCount to account for any discrepancy
+                    failedCount = totalKeypoints - validCount - zeroConfCount - lowConfCount;
+                }
+                
+                string diagnosticDetails = string.Format("valid={0}, zeroConf={1}, lowConf={2}, failed={3}, total={4}", 
+                    validCount, zeroConfCount, lowConfCount, failedCount, totalKeypoints);
+                
+                // Store diagnostic details for debug panel
+                lastTriangulationDiagnostics = diagnosticDetails;
+                lastTriangulationFrame = commonFrameNumber;
+                
+                // Log more details about why triangulation failed
+                int invalidCount = totalKeypoints - validCount;
+                log.WarnFormat("Triangulation validation failed for frame {0}: only {1} valid (non-NaN) keypoints out of {2} total ({3} invalid). Triangulator ready: {4}, Details: {5}", 
+                    commonFrameNumber, validCount, totalKeypoints, invalidCount, 
+                    triangulator != null && triangulator.IsReady, diagnosticDetails);
+                
+                // Also log sample of which keypoints failed (first 5 invalid ones) at WARN level
+                if (pose3D.KeyPoints != null && poseA.KeyPoints != null && poseB.KeyPoints != null)
+                {
+                    int logged = 0;
+                    for (int i = 0; i < pose3D.KeyPoints.Length && logged < 5; i++)
+                    {
+                        var kp = pose3D.KeyPoints[i];
+                        if (kp == null || !kp.IsValid)
+                        {
+                            var kpA = i < poseA.KeyPoints.Length ? poseA.KeyPoints[i] : null;
+                            var kpB = i < poseB.KeyPoints.Length ? poseB.KeyPoints[i] : null;
+                            log.DebugFormat("  Keypoint {0}: A conf={1:F2}, B conf={2:F2}, A valid={3}, B valid={4}", 
+                                i, 
+                                kpA != null ? kpA.Confidence : 0f, 
+                                kpB != null ? kpB.Confidence : 0f,
+                                kpA != null && kpA.Confidence > 0.10f,
+                                kpB != null && kpB.Confidence > 0.10f);
+                            logged++;
+                        }
+                    }
+                }
                 return;
             }
             
@@ -1076,13 +1364,23 @@ namespace Kinovea.ScreenManager
             }
 
             // Set frame number to common frame number
-            pose3D.FrameNumber = commonFrameNumber;
+            // Use the actual frame number from the poses, not commonFrameNumber
+            pose3D.FrameNumber = actualFrameNumber;
 
             // Store in cache
             pose3DCache.AddOrUpdate(pose3D);
+            
+            // Save cache periodically (every 10 frames) to avoid losing data
+            if (pose3DCache.Poses != null && pose3DCache.Poses.Count % 10 == 0)
+            {
+                Save3DCache();
+            }
 
             // Notify debug panel of update
             Services.NotificationCenter.RaisePose3DUpdated(this);
+            
+            log.DebugFormat("Triangulated frame {0}: {1} valid keypoints, cache now has {2} poses", 
+                commonFrameNumber, pose3D.ValidKeyPointCount, pose3DCache.Poses != null ? pose3DCache.Poses.Count : 0);
 
             // Log success occasionally
             var quality = triangulator.GetQualityMetrics(pose3D);
