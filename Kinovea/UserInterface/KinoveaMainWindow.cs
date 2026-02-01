@@ -1,5 +1,5 @@
 /*
-Copyright © Joan Charmant 2008.
+Copyright ? Joan Charmant 2008.
 jcharmant@gmail.com 
  
 This file is part of Kinovea.
@@ -20,6 +20,8 @@ along with Kinovea. If not, see http://www.gnu.org/licenses/.
 
 using System;
 using System.Drawing;
+using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Linq;
@@ -59,6 +61,7 @@ namespace Kinovea.Root
 
             this.rootKernel = rootKernel;
             InitializeComponent();
+            LoadApplicationIcon();
 
             UpdateTitle();
             
@@ -82,6 +85,33 @@ namespace Kinovea.Root
             }
                 
             EnableCopyData();
+        }
+
+        private void LoadApplicationIcon()
+        {
+            try
+            {
+                Assembly asm = Assembly.GetExecutingAssembly();
+                string resourceName = asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith("Icon.ico", StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrEmpty(resourceName))
+                {
+                    using (Stream stream = asm.GetManifestResourceStream(resourceName))
+                    {
+                        if (stream != null)
+                        {
+                            this.Icon = new Icon(stream);
+                            return;
+                        }
+                    }
+                }
+                string appIconPath = Path.Combine(Application.StartupPath, "app.ico");
+                if (File.Exists(appIconPath))
+                    this.Icon = new Icon(appIconPath);
+            }
+            catch (Exception ex)
+            {
+                log.WarnFormat("Could not load application icon: {0}", ex.Message);
+            }
         }
 
         /// <summary>

@@ -80,6 +80,17 @@ namespace Kinovea.Services
                 return instance.fileExplorerPreferences;
             }
         }
+
+        public static CloudPreferences CloudPreferences
+        {
+            get
+            {
+                if (instance == null)
+                   instance = new PreferencesManager();
+
+                return instance.cloudPreferences;
+            }
+        }
         #endregion
 
         #region Members
@@ -89,6 +100,7 @@ namespace Kinovea.Services
         private PlayerPreferences playerPreferences = new PlayerPreferences();
         private CapturePreferences capturePreferences = new CapturePreferences();
         private KeyboardPreferences keyboardPreferences = new KeyboardPreferences();
+        private CloudPreferences cloudPreferences = new CloudPreferences();
 
         private XmlWriterSettings xmlWriterSettings;
         private XmlReaderSettings xmlReaderSettings;
@@ -420,6 +432,7 @@ namespace Kinovea.Services
             WritePreference(writer, playerPreferences);
             WritePreference(writer, capturePreferences);
             WritePreference(writer, keyboardPreferences);
+            WritePreference(writer, cloudPreferences);
         }
 
         private void WritePreference(XmlWriter writer, IPreferenceSerializer serializer)
@@ -527,6 +540,9 @@ namespace Kinovea.Services
                         break;
                     case "Keyboard":
                         keyboardPreferences.ReadXML(reader);
+                        break;
+                    case "Cloud":
+                        cloudPreferences.ReadXML(reader);
                         break;
                     default:
                         reader.ReadOuterXml();

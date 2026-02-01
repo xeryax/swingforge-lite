@@ -1,5 +1,5 @@
 /*
-Copyright © Joan Charmant 2008.
+Copyright ï¿½ Joan Charmant 2008.
 jcharmant@gmail.com 
  
 This file is part of Kinovea.
@@ -57,6 +57,7 @@ namespace Kinovea.Root
             
             Assembly assembly = Assembly.GetExecutingAssembly();
             Software.Initialize(assembly.GetName().Version);
+            Software.SetLoggingDirectory();
 
             Software.LogInfo();
             Software.SanityCheckDirectories();

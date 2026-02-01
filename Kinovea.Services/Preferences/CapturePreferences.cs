@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright © Joan Charmant 2012.
 jcharmant@gmail.com 
@@ -125,7 +125,7 @@ namespace Kinovea.Services
         private CaptureRecordingMode recordingMode = CaptureRecordingMode.Delay;
         private bool saveUncompressedVideo;
         private bool verboseStats = false;
-        private int memoryBuffer = 768;
+        private int memoryBuffer = 2048;
         private Dictionary<string, CameraBlurb> cameraBlurbs = new Dictionary<string, CameraBlurb>();
         private PhotofinishConfiguration photofinishConfiguration = new PhotofinishConfiguration();
         private CaptureAutomationConfiguration captureAutomationConfiguration = new CaptureAutomationConfiguration();

@@ -75,6 +75,14 @@ namespace Kinovea.ScreenManager
         private AudioInputLevelMonitor audioInputLevelMonitor = new AudioInputLevelMonitor();
         private UDPMonitor udpMonitor = new UDPMonitor();
 
+        private UploadTrackingService uploadTrackingService;
+        private CaptureScreen dualCaptureScreen0;
+        private CaptureScreen dualCaptureScreen1;
+        private string pendingDualPath0;
+        private string pendingDualPath1;
+        private EventHandler<EventArgs<string>> dualCapturePathHandler0;
+        private EventHandler<EventArgs<string>> dualCapturePathHandler1;
+
         #region Menus
 
         // File
@@ -193,9 +201,10 @@ namespace Kinovea.ScreenManager
         #endregion
 
         #region Constructor & initialization
-        public ScreenManagerKernel()
+        public ScreenManagerKernel(UploadTrackingService uploadTrackingService = null)
         {
             log.Debug("Module Construction: ScreenManager.");
+            this.uploadTrackingService = uploadTrackingService;
 
             view = new ScreenManagerUserInterface();
             view.FileLoadAsked += View_FileLoadAsked;
@@ -1234,6 +1243,7 @@ namespace Kinovea.ScreenManager
         }
         public void OrganizeCommonControls()
         {
+            UnsubscribeDualCaptureUploadTracking();
             dualPlayer.ScreenListChanged(screenList);
             dualCapture.ScreenListChanged(screenList);
 
@@ -1243,12 +1253,56 @@ namespace Kinovea.ScreenManager
                 bool show = types.First == types.Second;
                 view.ShowCommonControls(show, types, dualPlayer.View, dualCapture.View);
                 canShowCommonControls = show;
+
+                if (uploadTrackingService != null && screenList[0] is CaptureScreen && screenList[1] is CaptureScreen)
+                {
+                    var cap0 = (CaptureScreen)screenList[0];
+                    var cap1 = (CaptureScreen)screenList[1];
+                    dualCapturePathHandler0 = (s, e) => OnDualCaptureRecordingStoppedWithPath(0, e.Value);
+                    dualCapturePathHandler1 = (s, e) => OnDualCaptureRecordingStoppedWithPath(1, e.Value);
+                    cap0.RecordingStoppedWithPath += dualCapturePathHandler0;
+                    cap1.RecordingStoppedWithPath += dualCapturePathHandler1;
+                    dualCaptureScreen0 = cap0;
+                    dualCaptureScreen1 = cap1;
+                    pendingDualPath0 = null;
+                    pendingDualPath1 = null;
+                }
             }
             else
             {
                 view.ShowCommonControls(false, null, null, null);
                 canShowCommonControls = false;
             }
+        }
+
+        private void UnsubscribeDualCaptureUploadTracking()
+        {
+            if (dualCaptureScreen0 != null && dualCapturePathHandler0 != null)
+            {
+                dualCaptureScreen0.RecordingStoppedWithPath -= dualCapturePathHandler0;
+                dualCaptureScreen0 = null;
+            }
+            if (dualCaptureScreen1 != null && dualCapturePathHandler1 != null)
+            {
+                dualCaptureScreen1.RecordingStoppedWithPath -= dualCapturePathHandler1;
+                dualCaptureScreen1 = null;
+            }
+            dualCapturePathHandler0 = null;
+            dualCapturePathHandler1 = null;
+            pendingDualPath0 = null;
+            pendingDualPath1 = null;
+        }
+
+        private void OnDualCaptureRecordingStoppedWithPath(int screenIndex, string path)
+        {
+            if (uploadTrackingService == null) return;
+            if (screenIndex == 0) pendingDualPath0 = path;
+            else if (screenIndex == 1) pendingDualPath1 = path;
+            if (string.IsNullOrEmpty(pendingDualPath0) || string.IsNullOrEmpty(pendingDualPath1)) return;
+            string sessionId = Guid.NewGuid().ToString();
+            uploadTrackingService.AddSession(sessionId, pendingDualPath0, pendingDualPath1, DateTime.UtcNow);
+            pendingDualPath0 = null;
+            pendingDualPath1 = null;
         }
         public void AfterSharedBufferChange()
         {

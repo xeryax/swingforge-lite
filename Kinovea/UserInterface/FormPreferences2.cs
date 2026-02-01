@@ -1,6 +1,6 @@
 #region License
 /*
-Copyright © Joan Charmant 2011.
+Copyright ï¿½ Joan Charmant 2011.
 jcharmant@gmail.com 
  
 This file is part of Kinovea.
@@ -99,6 +99,7 @@ namespace Kinovea.Root
             pages.Add(new PreferencePanelDrawings());
             pages.Add(new PreferencePanelCapture());
             pages.Add(new PreferencePanelKeyboard());
+            pages.Add(new PreferencePanelCloud());
             AddPages();
         }
         private void AddPages()

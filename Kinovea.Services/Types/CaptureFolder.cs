@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -35,6 +35,11 @@ namespace Kinovea.Services
         /// </summary>
         public string Path { get; set; }
 
+        /// <summary>
+        /// Optional filename template for this folder (e.g. A-%dateb%-%time%). If set, used when this folder is selected.
+        /// </summary>
+        public string DefaultFileName { get; set; }
+
         public CaptureFolder()
         {
             Id = Guid.NewGuid();
@@ -49,7 +54,8 @@ namespace Kinovea.Services
             {
                 Id = this.Id,
                 ShortName = this.ShortName,
-                Path = this.Path
+                Path = this.Path,
+                DefaultFileName = this.DefaultFileName
             };
 
             return clone;
@@ -67,6 +73,8 @@ namespace Kinovea.Services
             w.WriteElementString("Id", Id.ToString());
             w.WriteElementString("ShortName", ShortName);
             w.WriteElementString("Path", Path);
+            if (!string.IsNullOrEmpty(DefaultFileName))
+                w.WriteElementString("DefaultFileName", DefaultFileName);
         }
 
         public CaptureFolder(XmlReader r)
@@ -86,6 +94,9 @@ namespace Kinovea.Services
                         break;
                     case "Path":
                         Path = r.ReadElementContentAsString();
+                        break;
+                    case "DefaultFileName":
+                        DefaultFileName = r.ReadElementContentAsString();
                         break;
                     default:
                         r.ReadOuterXml();

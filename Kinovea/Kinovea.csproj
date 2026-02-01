@@ -216,6 +216,12 @@
     <Compile Include="UserInterface\FormPreferences2.Designer.cs">
       <DependentUpon>FormPreferences2.cs</DependentUpon>
     </Compile>
+    <Compile Include="UserInterface\FormCloudSyncDetails.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UserInterface\FormCloudSyncDetails.Designer.cs">
+      <DependentUpon>FormCloudSyncDetails.cs</DependentUpon>
+    </Compile>
     <Compile Include="UserInterface\PreferencePanelButtton.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -223,6 +229,12 @@
       <DependentUpon>PreferencePanelButtton.cs</DependentUpon>
     </Compile>
     <Compile Include="UserInterface\PreferencePanels\IPreferencePanel.cs" />
+    <Compile Include="UserInterface\PreferencePanels\PreferencePanelCloud.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="UserInterface\PreferencePanels\PreferencePanelCloud.Designer.cs">
+      <DependentUpon>PreferencePanelCloud.cs</DependentUpon>
+    </Compile>
     <Compile Include="UserInterface\PreferencePanels\PreferencePanelCapture.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -341,6 +353,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="UserInterface\PreferencePanelButtton.resx">
       <DependentUpon>PreferencePanelButtton.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UserInterface\PreferencePanels\PreferencePanelCloud.resx">
+      <DependentUpon>PreferencePanelCloud.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="UserInterface\PreferencePanels\PreferencePanelCapture.resx">
       <DependentUpon>PreferencePanelCapture.cs</DependentUpon>
@@ -654,6 +669,10 @@
     </None>
     <Content Include="..\swingforge-assets\SwingForge-Splash.png">
       <Link>SwingForge-Splash.png</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\swingforge-assets\app.ico">
+      <Link>app.ico</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

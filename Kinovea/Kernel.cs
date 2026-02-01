@@ -27,6 +27,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 using Kinovea.FileBrowser;
@@ -56,6 +57,10 @@ namespace Kinovea.Root
         private UpdaterKernel updater;
         private ScreenManagerKernel screenManager;
         private Stopwatch stopwatch = new Stopwatch();
+
+        private CloudUploadService cloudUploadService;
+        private UploadTrackingService uploadTrackingService;
+        private System.Windows.Forms.Timer cloudBackupTimer;
         
         #region Menus
 
@@ -200,6 +205,7 @@ namespace Kinovea.Root
             NotificationCenter.WakeUpAsked += NotificationCenter_WakeUpAsked;
             NotificationCenter.ReceivedExternalCommand += NotificationCenter_ReceivedExternalCommand;
             NotificationCenter.TriggerPreferencesUpdated += (s, e) => PreferencesUpdated(e.Value);
+            NotificationCenter.CloudSyncNowAsked += (s, e) => RunCloudBackupBatch();
 
             log.Debug("Plug sub modules at UI extension points (Menus, Toolbars, Statusbar, Windows).");
             ExtendMenu(mainWindow.menuStrip);
@@ -237,9 +243,15 @@ namespace Kinovea.Root
         {   
             stopwatch.Restart();
             log.Debug("Building the modules tree.");
+            cloudUploadService = new CloudUploadService();
+            uploadTrackingService = new UploadTrackingService();
             navigationPanel = new FileBrowserKernel();
             updater = new UpdaterKernel();
-            screenManager = new ScreenManagerKernel();
+            screenManager = new ScreenManagerKernel(uploadTrackingService);
+            cloudBackupTimer = new System.Windows.Forms.Timer();
+            cloudBackupTimer.Tick += CloudBackupTimer_Tick;
+            StartOrStopCloudBackupTimer();
+            RunCloudBackupBatchOnce();
             log.DebugFormat("Modules tree built in {0} ms.", stopwatch.ElapsedMilliseconds);
         }
         public void ExtendMenu(ToolStrip menu)
@@ -311,7 +323,9 @@ namespace Kinovea.Root
         private void PreferencesUpdated(bool sendMessage)
         {
             log.DebugFormat("Received PreferencesUpdated in root. sendMessage:{0}", sendMessage);
-            
+
+            StartOrStopCloudBackupTimer();
+
             // Don't refresh the submodules, they will do it themselves in PreferencesUpdated.
             RefreshUICulture(false);
             
@@ -1312,7 +1326,138 @@ namespace Kinovea.Root
 
             PointerManager.SetCursor(tag);
         }
-        
+
+        #region Cloud backup
+
+        private void StartOrStopCloudBackupTimer()
+        {
+            PreferencesManager.BeforeRead();
+            bool enabled = PreferencesManager.CloudPreferences.CloudBackupEnabled;
+            if (enabled)
+            {
+                int intervalMinutes = PreferencesManager.CloudPreferences.UploadBatchIntervalMinutes;
+                cloudBackupTimer.Interval = Math.Max(60000, intervalMinutes * 60 * 1000);
+                cloudBackupTimer.Stop();
+                cloudBackupTimer.Start();
+            }
+            else
+            {
+                cloudBackupTimer.Stop();
+            }
+        }
+
+        private void CloudBackupTimer_Tick(object sender, EventArgs e)
+        {
+            RunCloudBackupBatch();
+        }
+
+        private void RunCloudBackupBatchOnce()
+        {
+            PreferencesManager.BeforeRead();
+            if (PreferencesManager.CloudPreferences.CloudBackupEnabled)
+                RunCloudBackupBatch();
+        }
+
+        private void RunCloudBackupBatch()
+        {
+            if (cloudUploadService == null || uploadTrackingService == null)
+            {
+                log.Warn("Cloud backup batch skipped: services not initialized.");
+                return;
+            }
+            PreferencesManager.BeforeRead();
+            if (!PreferencesManager.CloudPreferences.CloudBackupEnabled)
+            {
+                log.Warn("Cloud backup batch skipped: cloud backup disabled in preferences.");
+                return;
+            }
+            string baseUrl = (PreferencesManager.CloudPreferences.CloudApiEndpoint ?? "").Trim();
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                log.Warn("Cloud backup batch skipped: API endpoint not configured.");
+                return;
+            }
+
+            PreferencesManager.CloudPreferences.EnsureUserId();
+            string userId = PreferencesManager.CloudPreferences.UserId;
+
+            Task.Run(async () =>
+            {
+                var unsynced = uploadTrackingService.GetUnsyncedSessions();
+                log.WarnFormat("Cloud backup batch: {0} unsynced session(s), uploading.", unsynced.Count);
+                var batchStart = DateTime.UtcNow;
+                long bytesUploaded = 0;
+                foreach (var session in unsynced)
+                {
+                    try
+                    {
+                        log.InfoFormat("Cloud backup: uploading session {0}.", session.SessionId);
+                        string faceOnFilename = !string.IsNullOrEmpty(session.VideoAPath) ? Path.GetFileName(session.VideoAPath) : null;
+                        string downTheLineFilename = !string.IsNullOrEmpty(session.VideoBPath) ? Path.GetFileName(session.VideoBPath) : null;
+                        var urls = await cloudUploadService.RequestUploadUrlsAsync(baseUrl, userId, session.SessionId, faceOnFilename, downTheLineFilename);
+                        if (urls == null)
+                        {
+                            uploadTrackingService.RecordFailure(session.SessionId, "Failed to get presigned URLs");
+                            CloudSyncStats.RecordSessionFailure();
+                            log.WarnFormat("Cloud backup: session {0} failed to get presigned URLs.", session.SessionId);
+                            continue;
+                        }
+                        bool ok1 = await cloudUploadService.UploadFileAsync(session.VideoAPath, urls.FaceOnUrl);
+                        bool ok2 = await cloudUploadService.UploadFileAsync(session.VideoBPath, urls.DownTheLineUrl);
+                        if (!ok1 || !ok2)
+                        {
+                            uploadTrackingService.RecordFailure(session.SessionId, "File upload failed");
+                            CloudSyncStats.RecordSessionFailure();
+                            log.WarnFormat("Cloud backup: session {0} file upload failed (A={1}, B={2}).", session.SessionId, ok1, ok2);
+                            continue;
+                        }
+                        if (File.Exists(session.VideoAPath)) bytesUploaded += new FileInfo(session.VideoAPath).Length;
+                        if (File.Exists(session.VideoBPath)) bytesUploaded += new FileInfo(session.VideoBPath).Length;
+                        var metadata = BuildUploadMetadata(session, userId);
+                        bool okMeta = await cloudUploadService.UploadMetadataAsync(metadata, urls.MetadataUrl);
+                        if (!okMeta)
+                        {
+                            uploadTrackingService.RecordFailure(session.SessionId, "Metadata upload failed");
+                            CloudSyncStats.RecordSessionFailure();
+                            log.WarnFormat("Cloud backup: session {0} metadata upload failed.", session.SessionId);
+                            continue;
+                        }
+                        uploadTrackingService.MarkSynced(session.SessionId);
+                        CloudSyncStats.RecordSessionSuccess();
+                        log.InfoFormat("Cloud backup: session {0} synced successfully.", session.SessionId);
+                    }
+                    catch (Exception ex)
+                    {
+                        uploadTrackingService.RecordFailure(session.SessionId, ex.Message);
+                        CloudSyncStats.RecordSessionFailure();
+                        log.WarnFormat("Cloud backup: session {0} error: {1}", session.SessionId, ex.Message);
+                    }
+                }
+                var elapsed = DateTime.UtcNow - batchStart;
+                CloudSyncStats.RecordBatchComplete(bytesUploaded, elapsed);
+                // Refresh pending count on UI thread so "X sessions pending" updates.
+                if (mainWindow != null && mainWindow.IsHandleCreated)
+                    mainWindow.BeginInvoke(new Action(() => NotificationCenter.RaiseCloudSyncBatchCompleted()));
+            });
+        }
+
+        private static UploadMetadata BuildUploadMetadata(SessionUploadRecord session, string userId)
+        {
+            return new UploadMetadata
+            {
+                UserId = userId,
+                SessionId = session.SessionId,
+                UploadTimestamp = DateTime.UtcNow.ToString("o"),
+                ClientVersion = Software.Version ?? "0",
+                CaptureTimestamp = session.CapturedAt.ToString("o"),
+                CameraSettings = new CameraSettingsDto { Fps = 0, Resolution = "" },
+                ClubType = null,
+                Notes = ""
+            };
+        }
+
+        #endregion
+
         #endregion
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -35,26 +35,26 @@ namespace Kinovea.Services
         
         public CapturePathConfiguration()
         {
-            // Default configuration.
+            // Default configuration: Head On (c:\capture\headon) and Down The Line (c:\capture\DTL).
+            string root = @"c:\capture";
 
-            string root = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            root = Path.Combine(root, "Capture");
-
-            CaptureFolder captureA = new CaptureFolder
+            CaptureFolder headOn = new CaptureFolder
             {
                 Id = Guid.NewGuid(),
-                ShortName = "Capture A",
-                Path = Path.Combine(root, "Capture A")
+                ShortName = "Head On",
+                Path = Path.Combine(root, "headon"),
+                DefaultFileName = "headon-%dateb%-%time%"
             };
 
-            CaptureFolder captureB = new CaptureFolder
+            CaptureFolder downTheLine = new CaptureFolder
             {
                 Id = Guid.NewGuid(),
-                ShortName = "Capture B",
-                Path = Path.Combine(root, "Capture B")
+                ShortName = "Down The Line",
+                Path = Path.Combine(root, "DTL"),
+                DefaultFileName = "dtl-%dateb%-%time%"
             };
 
-            CaptureFolders = new List<CaptureFolder> { captureA, captureB };
+            CaptureFolders = new List<CaptureFolder> { headOn, downTheLine };
             DefaultFileName = "%dateb%-%time%";
             ImageFormat = KinoveaImageFormat.JPG;
             VideoFormat = KinoveaVideoFormat.MP4;

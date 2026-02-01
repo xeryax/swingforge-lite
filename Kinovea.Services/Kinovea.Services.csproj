@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="12.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -193,6 +193,8 @@
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="System" />
     <Reference Include="System.configuration" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
@@ -207,6 +209,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Cloud\CloudSyncStats.cs" />
+    <Compile Include="Cloud\CloudUploadService.cs" />
+    <Compile Include="Cloud\PresignedUrlsResponse.cs" />
+    <Compile Include="Cloud\UploadTrackingFile.cs" />
+    <Compile Include="Cloud\UploadTrackingService.cs" />
     <Compile Include="Bitmap\TJPEG\TJCS.cs" />
     <Compile Include="Bitmap\TJPEG\TJFLAG.cs" />
     <Compile Include="Bitmap\TJPEG\tjnet.cs" />
@@ -327,11 +334,14 @@
     <Compile Include="Types\ExplorerThumbSize.cs" />
     <Compile Include="Types\KinoveaImageFormat.cs" />
     <Compile Include="Types\KinoveaVideoFormat.cs" />
+    <Compile Include="Preferences\CloudPreferences.cs" />
     <Compile Include="Preferences\PreferencesManager.cs" />
     <Compile Include="Types\ShortcutFolder.cs" />
     <Compile Include="Types\Units\SpeedUnit.cs" />
+    <Compile Include="Types\SessionUploadRecord.cs" />
     <Compile Include="Types\TimecodeFormat.cs" />
     <Compile Include="Types\TimecodeType.cs" />
+    <Compile Include="Types\UploadMetadata.cs" />
     <Compile Include="ThreePartsVersion.cs" />
     <Compile Include="TimeHelper.cs" />
     <Compile Include="WinForms\NudHelper.cs" />

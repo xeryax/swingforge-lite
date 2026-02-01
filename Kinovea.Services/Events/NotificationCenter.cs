@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright © Joan Charmant 2012.
 jcharmant@gmail.com 
@@ -245,6 +245,28 @@ namespace Kinovea.Services
         public static void RaisePose3DUpdated(object controller)
         {
             Pose3DUpdated?.Invoke(null, new EventArgs<object>(controller));
+        }
+        #endregion
+
+        #region Cloud backup
+
+        /// <summary>
+        /// Event raised when the user requests a cloud sync now (e.g. from Settings).
+        /// </summary>
+        public static EventHandler CloudSyncNowAsked;
+        public static void RaiseCloudSyncNowAsked()
+        {
+            CloudSyncNowAsked?.Invoke(null, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Event raised when a cloud backup batch has finished (on UI thread).
+        /// Subscribers can refresh pending count / sync stats.
+        /// </summary>
+        public static EventHandler CloudSyncBatchCompleted;
+        public static void RaiseCloudSyncBatchCompleted()
+        {
+            CloudSyncBatchCompleted?.Invoke(null, EventArgs.Empty);
         }
         #endregion
     }

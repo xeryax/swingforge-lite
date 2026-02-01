@@ -201,24 +201,39 @@ namespace Kinovea.Services
 
 
         /// <summary>
+        /// Redirect log file to the app's Logs directory. Call once right after Initialize() so early logs don't use LogConf.xml path.
+        /// </summary>
+        public static void SetLoggingDirectory()
+        {
+            Hierarchy logRepository = (Hierarchy)LogManager.GetRepository();
+            Logger rootLogger = logRepository.Root;
+            RollingFileAppender appender = (RollingFileAppender)rootLogger.GetAppender("RollingFileAppender");
+            if (appender != null)
+            {
+                appender.File = Path.Combine(LogsDirectory, "log.txt");
+                appender.ActivateOptions();
+            }
+        }
+
+        /// <summary>
         /// Initialize the logging on the right file and level.
         /// </summary>
         public static void ConfigureLogging()
         {
-            // Logging starts with whatever is in LogConf.xml.
-            // We update based on preferences and instance name.
+            // Logging directory was set by SetLoggingDirectory() after Initialize().
+            // We update filename for instance name and level from preferences.
             Hierarchy logRepository = (Hierarchy)LogManager.GetRepository();
             Logger rootLogger = logRepository.Root;
             RollingFileAppender appender = (RollingFileAppender)rootLogger.GetAppender("RollingFileAppender");
             Level logLevel = PreferencesManager.GeneralPreferences.EnableDebugLog ? Level.Debug : Level.Warn;
             appender.Threshold = logLevel;
 
-            // Each instance gets its own log files.
+            // Each instance gets its own log files under the app's Logs directory (e.g. %AppData%\SwingForge Lite\Logs).
             // The title name may use illegal characters and the window name may be empty.
             // Use the id-derived name.
             string idName = WindowManager.GetIdName(WindowManager.ActiveWindow);
             string logFile = string.IsNullOrEmpty(idName) ? "log.txt" : string.Format("log.{0}.txt", idName);
-            appender.File = Path.Combine(Path.GetDirectoryName(appender.File), logFile);
+            appender.File = Path.Combine(LogsDirectory, logFile);
 
             appender.ActivateOptions();
             logRepository.Configured = true;

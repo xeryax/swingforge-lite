@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright © Joan Charmant 2013.
 jcharmant@gmail.com 
@@ -52,6 +52,8 @@ namespace Kinovea.ScreenManager
         public event EventHandler<EventArgs<string>> CameraDiscoveryComplete;
         public event EventHandler RecordingStarted;
         public event EventHandler RecordingStopped;
+        /// <summary>Raised when recording stops, with the path to the saved video file.</summary>
+        public event EventHandler<EventArgs<string>> RecordingStoppedWithPath;
         #endregion
 
         #region Properties
@@ -1911,6 +1913,7 @@ namespace Kinovea.ScreenManager
             UpdateRecordingIndicator();
             wasTriggered = false;
 
+            RecordingStoppedWithPath?.Invoke(this, new EventArgs<string>(finalFilename));
             RecordingStopped?.Invoke(this, EventArgs.Empty);
         }
 

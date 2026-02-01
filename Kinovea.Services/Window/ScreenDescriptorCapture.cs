@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright © Joan Charmant 2012.
 jcharmant@gmail.com 
@@ -104,9 +104,9 @@ namespace Kinovea.Services
             Id = Guid.NewGuid();
             CameraName = "";
             Autostream = true;
-            Delay = 0;
+            Delay = 1.5f;
             DelayedDisplay = true;
-            MaxDuration = 0;
+            MaxDuration = 4f;
             CaptureFolder = Guid.Empty;
             FileName = "";
             EnableCommand = false;

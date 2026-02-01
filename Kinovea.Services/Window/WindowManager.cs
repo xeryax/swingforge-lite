@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -228,7 +228,7 @@ namespace Kinovea.Services
                 }
 
                 string titleName = GetFriendlyName(d);
-                string title = string.Format("Kinovea [{0}]", titleName);
+                string title = string.Format("{0} [{1}]", Software.ApplicationName, titleName);
                 IntPtr handle = NativeMethods.FindWindow(null, title);
 
                 // Ignore dormant.
@@ -249,7 +249,7 @@ namespace Kinovea.Services
         {
             // Just launch the program again.
             // The window manager of the new instance will take care of creating the new window descriptor.
-            string path = Path.Combine(AppContext.BaseDirectory, "Kinovea.exe");
+            string path = Application.ExecutablePath;
             var p = new Process();
             p.StartInfo.FileName = path;
             p.Start();
@@ -307,7 +307,7 @@ namespace Kinovea.Services
             // Launch the program again with the argument.
             // The window manager of the new instance will take care of loading content
             // from the window descriptor.
-            string path = Path.Combine(AppContext.BaseDirectory, "Kinovea.exe");
+            string path = Application.ExecutablePath;
             var p = new Process();
             p.StartInfo.FileName = path;
             p.StartInfo.Arguments = args;
@@ -322,7 +322,7 @@ namespace Kinovea.Services
         private static bool BringToFront(WindowDescriptor d)
         {
             string titleName = GetFriendlyName(d);
-            string title = string.Format("Kinovea [{0}]", titleName);
+            string title = string.Format("{0} [{1}]", Software.ApplicationName, titleName);
             IntPtr handle = NativeMethods.FindWindow(null, title);
             if (handle != IntPtr.Zero)
             {
@@ -679,7 +679,7 @@ namespace Kinovea.Services
                     continue;
 
                 string titleName = GetFriendlyName(d);
-                string title = string.Format("Kinovea [{0}]", titleName);
+                string title = string.Format("{0} [{1}]", Software.ApplicationName, titleName);
                 IntPtr handle = NativeMethods.FindWindow(null, title);
                 
                 // Ignore dormant.
@@ -702,7 +702,7 @@ namespace Kinovea.Services
         {
             // Find the process.
             string titleName = GetFriendlyName(d);
-            string title = string.Format("Kinovea [{0}]", titleName);
+            string title = string.Format("{0} [{1}]", Software.ApplicationName, titleName);
             IntPtr handle = NativeMethods.FindWindow(null, title);
             if (handle != IntPtr.Zero)
             {

@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright © Joan Charmant 2013.
 jcharmant@gmail.com 
@@ -118,7 +118,8 @@ namespace Kinovea.ScreenManager
             nudDuration.Maximum = 300;
             NudHelper.FixNudScroll(nudDuration);
 
-            tbFilename.Text = PreferencesManager.CapturePreferences.CapturePathConfiguration.DefaultFileName;
+            var config = PreferencesManager.CapturePreferences.CapturePathConfiguration;
+            tbFilename.Text = config.DefaultFileName;
 
             this.Hotkeys = HotkeySettingsManager.LoadHotkeys("CaptureScreen");
         }
@@ -624,11 +625,24 @@ namespace Kinovea.ScreenManager
             }
 
             // The selected capture folder may be null if it's the first time loading.
-            // In this case we set it to the first entry which is the dummy entry.
+            // Default to first real folder (Head On) so filename shows headon-%dateb%-%time%.
             // We may get the true value from the window descriptor later in ForcePopulate().
             if (cbCaptureFolder.SelectedIndex < 0 && cbCaptureFolder.Items.Count > 0)
             {
-                cbCaptureFolder.SelectedIndex = 0;
+                cbCaptureFolder.SelectedIndex = ccff.Count > 0 ? 1 : 0;
+            }
+
+            ApplySelectedFolderFilename();
+        }
+
+        private void ApplySelectedFolderFilename()
+        {
+            var config = PreferencesManager.CapturePreferences.CapturePathConfiguration;
+            if (cbCaptureFolder.SelectedItem == null) return;
+            var folder = cbCaptureFolder.SelectedItem as CaptureFolder;
+            if (folder != null && folder.Id != Guid.Empty && !string.IsNullOrEmpty(folder.Path))
+            {
+                tbFilename.Text = !string.IsNullOrEmpty(folder.DefaultFileName) ? folder.DefaultFileName : config.DefaultFileName;
             }
         }
 
@@ -656,6 +670,7 @@ namespace Kinovea.ScreenManager
         private void cbCaptureFolder_SelectedIndexChanged(object sender, EventArgs e)
         {
             UpdateCaptureFolderToolTip();
+            ApplySelectedFolderFilename();
         }
 
         private void UpdateCaptureFolderToolTip()
