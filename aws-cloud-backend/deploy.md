@@ -62,8 +62,8 @@ def generate_presigned_url(key, expiration, content_type='application/octet-stre
 **Via AWS CLI:**
 
 ```bash
-# Zip the function
-cd lambda/presigned-url-generator
+# From repo root: zip the function (handler stays lambda_function.lambda_handler)
+cd aws-cloud-backend
 zip function.zip lambda_function.py
 
 # Create the function
