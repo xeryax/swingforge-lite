@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright © Joan Charmant 2012.
 jcharmant@gmail.com 
@@ -71,7 +71,7 @@ namespace Kinovea.Services
         #endregion
 
         #region Members
-        private string uiCultureName;
+        private string uiCultureName = "en";
         private bool enableDebugLog = false;
         private bool enableAllLanguages = false;
         private int preferencePage;
@@ -81,7 +81,7 @@ namespace Kinovea.Services
 
         public GeneralPreferences()
         {
-            uiCultureName = Thread.CurrentThread.CurrentUICulture.Name;
+            uiCultureName = "en";
         }
 
         private void Save()
@@ -107,11 +107,7 @@ namespace Kinovea.Services
         /// <returns></returns>
         public CultureInfo GetSupportedCulture()
         {
-            CultureInfo ci = new CultureInfo(uiCultureName);
-            if (LanguageManager.IsSupportedCulture(ci))
-                return ci;
-            else
-                return new CultureInfo("en");
+            return new CultureInfo("en");
         }
 
         #region Serialization
@@ -134,7 +130,8 @@ namespace Kinovea.Services
                 switch (reader.Name)
                 {
                     case "Culture":
-                        uiCultureName = reader.ReadElementContentAsString();
+                        reader.ReadElementContentAsString();
+                        uiCultureName = "en";
                         break;
                     case "EnableDebugLog":
                         enableDebugLog = XmlHelper.ParseBoolean(reader.ReadElementContentAsString());

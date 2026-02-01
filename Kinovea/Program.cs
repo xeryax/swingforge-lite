@@ -54,7 +54,10 @@ namespace Kinovea.Root
             AppDomain.CurrentDomain.UnhandledException += AppDomain_UnhandledException;
             
             Thread.CurrentThread.Name = "Main";
-            
+
+            // English only; set before preferences so default is en.
+            Thread.CurrentThread.CurrentUICulture = new System.Globalization.CultureInfo("en");
+
             Assembly assembly = Assembly.GetExecutingAssembly();
             Software.Initialize(assembly.GetName().Version);
             Software.SetLoggingDirectory();

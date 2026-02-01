@@ -1,6 +1,6 @@
 #region License
 /*
-Copyright © Joan Charmant 2011.
+Copyright Â© Joan Charmant 2011.
 jcharmant@gmail.com 
  
 This file is part of Kinovea.
@@ -49,11 +49,8 @@ namespace Kinovea.Root
 		private void InitializeComponent()
 		{
       this.cmbHistoryCount = new System.Windows.Forms.ComboBox();
-      this.lblLanguage = new System.Windows.Forms.Label();
       this.lblHistoryCount = new System.Windows.Forms.Label();
-      this.cmbLanguage = new System.Windows.Forms.ComboBox();
       this.cbEnableDebugLogs = new System.Windows.Forms.CheckBox();
-      this.cbEnableAllLanguages = new System.Windows.Forms.CheckBox();
       this.SuspendLayout();
       // 
       // cmbHistoryCount
@@ -72,47 +69,25 @@ namespace Kinovea.Root
             "8",
             "9",
             "10"});
-      this.cmbHistoryCount.Location = new System.Drawing.Point(302, 114);
+      this.cmbHistoryCount.Location = new System.Drawing.Point(302, 47);
       this.cmbHistoryCount.Name = "cmbHistoryCount";
       this.cmbHistoryCount.Size = new System.Drawing.Size(36, 21);
       this.cmbHistoryCount.TabIndex = 13;
       this.cmbHistoryCount.SelectedIndexChanged += new System.EventHandler(this.cmbHistoryCount_SelectedIndexChanged);
       // 
-      // lblLanguage
-      // 
-      this.lblLanguage.AutoSize = true;
-      this.lblLanguage.Location = new System.Drawing.Point(29, 47);
-      this.lblLanguage.Name = "lblLanguage";
-      this.lblLanguage.Size = new System.Drawing.Size(61, 13);
-      this.lblLanguage.TabIndex = 12;
-      this.lblLanguage.Text = "Language :";
-      // 
       // lblHistoryCount
       // 
       this.lblHistoryCount.AutoSize = true;
-      this.lblHistoryCount.Location = new System.Drawing.Point(29, 117);
+      this.lblHistoryCount.Location = new System.Drawing.Point(29, 50);
       this.lblHistoryCount.Name = "lblHistoryCount";
       this.lblHistoryCount.Size = new System.Drawing.Size(160, 13);
       this.lblHistoryCount.TabIndex = 14;
       this.lblHistoryCount.Text = "Number of files in recent history :";
       // 
-      // cmbLanguage
-      // 
-      this.cmbLanguage.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-      this.cmbLanguage.FormattingEnabled = true;
-      this.cmbLanguage.Items.AddRange(new object[] {
-            "English",
-            "Français"});
-      this.cmbLanguage.Location = new System.Drawing.Point(302, 47);
-      this.cmbLanguage.Name = "cmbLanguage";
-      this.cmbLanguage.Size = new System.Drawing.Size(104, 21);
-      this.cmbLanguage.TabIndex = 11;
-      this.cmbLanguage.SelectedIndexChanged += new System.EventHandler(this.cmbLanguage_SelectedIndexChanged);
-      // 
       // cbEnableDebugLogs
       // 
       this.cbEnableDebugLogs.AutoSize = true;
-      this.cbEnableDebugLogs.Location = new System.Drawing.Point(32, 150);
+      this.cbEnableDebugLogs.Location = new System.Drawing.Point(32, 83);
       this.cbEnableDebugLogs.Name = "cbEnableDebugLogs";
       this.cbEnableDebugLogs.Size = new System.Drawing.Size(114, 17);
       this.cbEnableDebugLogs.TabIndex = 55;
@@ -120,39 +95,22 @@ namespace Kinovea.Root
       this.cbEnableDebugLogs.UseVisualStyleBackColor = true;
       this.cbEnableDebugLogs.CheckedChanged += new System.EventHandler(this.ChkEnableDebugLog_CheckedChanged);
       // 
-      // cbEnableAllLanguages
-      // 
-      this.cbEnableAllLanguages.AutoSize = true;
-      this.cbEnableAllLanguages.Location = new System.Drawing.Point(32, 81);
-      this.cbEnableAllLanguages.Name = "cbEnableAllLanguages";
-      this.cbEnableAllLanguages.Size = new System.Drawing.Size(124, 17);
-      this.cbEnableAllLanguages.TabIndex = 56;
-      this.cbEnableAllLanguages.Text = "Enable all languages";
-      this.cbEnableAllLanguages.UseVisualStyleBackColor = true;
-      this.cbEnableAllLanguages.CheckedChanged += new System.EventHandler(this.cbEnableAllLanguages_CheckedChanged);
-      // 
       // PreferencePanelGeneral
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.BackColor = System.Drawing.Color.Gainsboro;
-      this.Controls.Add(this.cbEnableAllLanguages);
       this.Controls.Add(this.cbEnableDebugLogs);
       this.Controls.Add(this.cmbHistoryCount);
-      this.Controls.Add(this.lblLanguage);
       this.Controls.Add(this.lblHistoryCount);
-      this.Controls.Add(this.cmbLanguage);
       this.Name = "PreferencePanelGeneral";
       this.Size = new System.Drawing.Size(490, 322);
       this.ResumeLayout(false);
       this.PerformLayout();
 
 		}
-		private System.Windows.Forms.ComboBox cmbLanguage;
 		private System.Windows.Forms.Label lblHistoryCount;
-		private System.Windows.Forms.Label lblLanguage;
 		private System.Windows.Forms.ComboBox cmbHistoryCount;
         private System.Windows.Forms.CheckBox cbEnableDebugLogs;
-        private System.Windows.Forms.CheckBox cbEnableAllLanguages;
     }
 }

@@ -100,8 +100,6 @@ namespace Kinovea.Root
 
         // Options
         private ToolStripMenuItem mnuOptions = new ToolStripMenuItem();
-        private ToolStripMenuItem mnuLanguages = new ToolStripMenuItem();
-        private Dictionary<string, ToolStripMenuItem> languageMenus = new Dictionary<string, ToolStripMenuItem>();
         private ToolStripMenuItem mnuTranslate1 = new ToolStripMenuItem();
         private ToolStripMenuItem mnuTranslate2 = new ToolStripMenuItem();
         private ToolStripMenuItem mnuPreferences = new ToolStripMenuItem();
@@ -223,7 +221,6 @@ namespace Kinovea.Root
             log.Debug("Setting current ui culture.");
             Thread.CurrentThread.CurrentUICulture = PreferencesManager.GeneralPreferences.GetSupportedCulture();
             RefreshUICulture(true);
-            CheckLanguageMenu();
             CheckTimecodeMenu();
         }
         public void Launch()
@@ -296,7 +293,6 @@ namespace Kinovea.Root
         {
             log.Debug("RefreshUICulture - Reload localized strings for the whole tree.");
             RefreshCultureMenu();
-            CheckLanguageMenu();
             CheckTimecodeMenu();
             
             toolOpenFile.ToolTipText = ScreenManagerLang.mnuOpenVideo;
@@ -458,23 +454,6 @@ namespace Kinovea.Root
             #endregion
 
             #region Options
-            mnuLanguages.Image = Properties.Resources.international;
-            bool enableAllLanguages = PreferencesManager.GeneralPreferences.EnableAllLanguages;
-            var enabledLanguages = LanguageManager.GetEnabledLanguages(enableAllLanguages);
-            foreach (KeyValuePair<string, string> lang in enabledLanguages)
-            {
-                ToolStripMenuItem mnuLang = new ToolStripMenuItem(lang.Value);
-                mnuLang.Tag = lang.Key;
-                mnuLang.Click += mnuLanguage_OnClick;
-                languageMenus.Add(lang.Key, mnuLang);
-                mnuLanguages.DropDownItems.Add(mnuLang);
-            }
-            // mnuTranslate1 hidden for SwingForge Lite
-            // mnuTranslate1.Image = Properties.Resources.international;
-            // mnuTranslate1.Click += (s, e) => Process.Start("https://hosted.weblate.org/engage/kinovea/");
-            // mnuLanguages.DropDownItems.Add(new ToolStripSeparator());
-            // mnuLanguages.DropDownItems.Add(mnuTranslate1);
-
             mnuPreferences.Image = Properties.Resources.wrench;
             mnuPreferences.Click += new EventHandler(mnuPreferencesOnClick);
             
@@ -501,7 +480,6 @@ namespace Kinovea.Root
             BuildPointerMenus();
             
             mnuOptions.DropDownItems.AddRange(new ToolStripItem[] { 
-                mnuLanguages, 
                 mnuTimecode, 
                 mnuPointer,
                 new ToolStripSeparator(),
@@ -597,9 +575,6 @@ namespace Kinovea.Root
             mnuTools.Text = RootLang.mnuTools;
             
             mnuOptions.Text = RootLang.mnuOptions;
-            mnuLanguages.Text = RootLang.mnuLanguages;
-            // mnuTranslate1.Text = RootLang.mnuTranslate; // Hidden for SwingForge Lite
-            // mnuTranslate2.Text = RootLang.mnuTranslate; // Hidden for SwingForge Lite
             mnuPreferences.Text = RootLang.mnuPreferences;
             mnuTimecode.Text = RootLang.mnuTimeFormat;
 
@@ -822,54 +797,6 @@ namespace Kinovea.Root
         #endregion
 
         #region Options
-        private void mnuLanguage_OnClick(object sender, EventArgs e)
-        {
-            ToolStripMenuItem menu = sender as ToolStripMenuItem;
-            if(menu != null && menu.Tag is string)
-                SwitchCulture((string)menu.Tag);
-        }
-
-        private void SwitchCulture(string name)
-        {
-            try
-            {
-                // Make sure we have the latest core prefs before saving this.
-                PreferencesManager.BeforeRead();
-
-                CultureInfo oldCulture = Thread.CurrentThread.CurrentUICulture;
-                CultureInfo newCulture = new CultureInfo(name);
-
-                log.Debug(String.Format("Changing culture from [{0}] to [{1}].", oldCulture.Name, newCulture.Name));
-
-                PreferencesManager.GeneralPreferences.SetCulture(newCulture.Name);
-                Thread.CurrentThread.CurrentUICulture = PreferencesManager.GeneralPreferences.GetSupportedCulture();
-
-                RefreshUICulture(true);
-
-                // Make sure all the other windows are updated immediately.
-                WindowManager.SendMessage("Kinovea:Window.PreferencesUpdated");
-            }
-            catch (ArgumentException)
-            {
-                log.ErrorFormat("Could not switch from culture {0} to {1}.", Thread.CurrentThread.CurrentUICulture.Name, name);
-            }
-        }
-        private void CheckLanguageMenu()
-        {
-            foreach(ToolStripMenuItem mnuLang in languageMenus.Values)
-                mnuLang.Checked = false;
-
-            string cultureName = LanguageManager.GetCurrentCultureName();
-            
-            try
-            {
-                languageMenus[cultureName].Checked = true;    
-            }
-            catch(KeyNotFoundException)
-            {
-                languageMenus["en"].Checked = true;            
-            }
-        }
         private void mnuPreferencesOnClick(object sender, EventArgs e)
         {
             FormPreferences2 fp = new FormPreferences2();
