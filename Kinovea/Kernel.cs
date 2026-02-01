@@ -1310,6 +1310,12 @@ namespace Kinovea.Root
 
             Task.Run(async () =>
             {
+                HashSet<string> openPaths = null;
+                if (mainWindow != null && mainWindow.IsHandleCreated)
+                    openPaths = (HashSet<string>)mainWindow.Invoke(new Func<HashSet<string>>(() => screenManager.GetOpenVideoPaths()));
+                if (openPaths == null)
+                    openPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                 var unsynced = uploadTrackingService.GetUnsyncedSessions();
                 log.WarnFormat("Cloud backup batch: {0} unsynced session(s), uploading.", unsynced.Count);
                 var batchStart = DateTime.UtcNow;
@@ -1318,37 +1324,69 @@ namespace Kinovea.Root
                 {
                     try
                     {
+                        if (openPaths.Contains(session.VideoAPath) || openPaths.Contains(session.VideoBPath))
+                        {
+                            log.InfoFormat("Cloud backup: skipping session {0} (file open in app).", session.SessionId);
+                            continue;
+                        }
                         log.InfoFormat("Cloud backup: uploading session {0}.", session.SessionId);
-                        string faceOnFilename = !string.IsNullOrEmpty(session.VideoAPath) ? Path.GetFileName(session.VideoAPath) : null;
-                        string downTheLineFilename = !string.IsNullOrEmpty(session.VideoBPath) ? Path.GetFileName(session.VideoBPath) : null;
+                        OrderPathsAsFaceOnAndDtl(session.VideoAPath, session.VideoBPath, out string faceOnPath, out string dtlPath);
+                        string faceOnFilename = !string.IsNullOrEmpty(faceOnPath) ? Path.GetFileName(faceOnPath) : null;
+                        string downTheLineFilename = !string.IsNullOrEmpty(dtlPath) ? Path.GetFileName(dtlPath) : null;
                         var urls = await cloudUploadService.RequestUploadUrlsAsync(baseUrl, userId, session.SessionId, faceOnFilename, downTheLineFilename);
                         if (urls == null)
                         {
                             uploadTrackingService.RecordFailure(session.SessionId, "Failed to get presigned URLs");
-                            CloudSyncStats.RecordSessionFailure();
+                            CloudSyncStats.RecordSessionFailure("Failed to get presigned URLs");
                             log.WarnFormat("Cloud backup: session {0} failed to get presigned URLs.", session.SessionId);
                             continue;
                         }
-                        bool ok1 = await cloudUploadService.UploadFileAsync(session.VideoAPath, urls.FaceOnUrl);
-                        bool ok2 = await cloudUploadService.UploadFileAsync(session.VideoBPath, urls.DownTheLineUrl);
+                        bool ok1 = await cloudUploadService.UploadFileAsync(faceOnPath, urls.FaceOnUrl);
+                        bool ok2 = await cloudUploadService.UploadFileAsync(dtlPath, urls.DownTheLineUrl);
                         if (!ok1 || !ok2)
                         {
                             uploadTrackingService.RecordFailure(session.SessionId, "File upload failed");
-                            CloudSyncStats.RecordSessionFailure();
+                            CloudSyncStats.RecordSessionFailure("File upload failed");
                             log.WarnFormat("Cloud backup: session {0} file upload failed (A={1}, B={2}).", session.SessionId, ok1, ok2);
                             continue;
                         }
-                        if (File.Exists(session.VideoAPath)) bytesUploaded += new FileInfo(session.VideoAPath).Length;
-                        if (File.Exists(session.VideoBPath)) bytesUploaded += new FileInfo(session.VideoBPath).Length;
+                        if (File.Exists(faceOnPath)) bytesUploaded += new FileInfo(faceOnPath).Length;
+                        if (File.Exists(dtlPath)) bytesUploaded += new FileInfo(dtlPath).Length;
+
+                        string kvaPathFaceOn = Path.Combine(Path.GetDirectoryName(faceOnPath), Path.GetFileNameWithoutExtension(faceOnPath) + ".kva");
+                        string kvaPathDtl = Path.Combine(Path.GetDirectoryName(dtlPath), Path.GetFileNameWithoutExtension(dtlPath) + ".kva");
+                        if (!string.IsNullOrEmpty(urls.FaceOnKvaUrl) && File.Exists(kvaPathFaceOn))
+                        {
+                            bool okKvaA = await cloudUploadService.UploadFileAsync(kvaPathFaceOn, urls.FaceOnKvaUrl);
+                            if (okKvaA && File.Exists(kvaPathFaceOn)) bytesUploaded += new FileInfo(kvaPathFaceOn).Length;
+                        }
+                        if (!string.IsNullOrEmpty(urls.DownTheLineKvaUrl) && File.Exists(kvaPathDtl))
+                        {
+                            bool okKvaB = await cloudUploadService.UploadFileAsync(kvaPathDtl, urls.DownTheLineKvaUrl);
+                            if (okKvaB && File.Exists(kvaPathDtl)) bytesUploaded += new FileInfo(kvaPathDtl).Length;
+                        }
+
                         var metadata = BuildUploadMetadata(session, userId);
                         bool okMeta = await cloudUploadService.UploadMetadataAsync(metadata, urls.MetadataUrl);
                         if (!okMeta)
                         {
                             uploadTrackingService.RecordFailure(session.SessionId, "Metadata upload failed");
-                            CloudSyncStats.RecordSessionFailure();
+                            CloudSyncStats.RecordSessionFailure("Metadata upload failed");
                             log.WarnFormat("Cloud backup: session {0} metadata upload failed.", session.SessionId);
                             continue;
                         }
+                        if (!string.IsNullOrEmpty(urls.Pose3dUrl))
+                        {
+                            string pose3dPath = GetPose3dPath(faceOnPath, dtlPath);
+                            if (!File.Exists(pose3dPath))
+                                pose3dPath = GetPose3dPath(dtlPath, faceOnPath);
+                            if (File.Exists(pose3dPath))
+                            {
+                                bool okPose3d = await cloudUploadService.UploadJsonFileAsync(pose3dPath, urls.Pose3dUrl);
+                                if (okPose3d && File.Exists(pose3dPath)) bytesUploaded += new FileInfo(pose3dPath).Length;
+                            }
+                        }
+
                         uploadTrackingService.MarkSynced(session.SessionId);
                         CloudSyncStats.RecordSessionSuccess();
                         log.InfoFormat("Cloud backup: session {0} synced successfully.", session.SessionId);
@@ -1356,7 +1394,7 @@ namespace Kinovea.Root
                     catch (Exception ex)
                     {
                         uploadTrackingService.RecordFailure(session.SessionId, ex.Message);
-                        CloudSyncStats.RecordSessionFailure();
+                        CloudSyncStats.RecordSessionFailure(ex.Message);
                         log.WarnFormat("Cloud backup: session {0} error: {1}", session.SessionId, ex.Message);
                     }
                 }
@@ -1366,6 +1404,46 @@ namespace Kinovea.Root
                 if (mainWindow != null && mainWindow.IsHandleCreated)
                     mainWindow.BeginInvoke(new Action(() => NotificationCenter.RaiseCloudSyncBatchCompleted()));
             });
+        }
+
+        /// <summary>
+        /// Order the two session paths so faceOnPath goes to HeadOn and dtlPath to DTL in S3.
+        /// Uses path/filename heuristics: "headon" (folder or filename) = face-on, "dtl" = down-the-line.
+        /// </summary>
+        private static void OrderPathsAsFaceOnAndDtl(string pathA, string pathB, out string faceOnPath, out string dtlPath)
+        {
+            bool aIsHeadon = PathLooksLikeHeadOn(pathA);
+            bool bIsHeadon = PathLooksLikeHeadOn(pathB);
+            if (bIsHeadon && !aIsHeadon)
+            {
+                faceOnPath = pathB;
+                dtlPath = pathA;
+            }
+            else
+            {
+                faceOnPath = pathA;
+                dtlPath = pathB;
+            }
+        }
+
+        private static bool PathLooksLikeHeadOn(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+            string dir = Path.GetDirectoryName(path) ?? "";
+            string name = Path.GetFileNameWithoutExtension(path) ?? "";
+            string combined = (dir + "/" + name).Replace('\\', '/');
+            return combined.IndexOf("headon", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>
+        /// Path for pose3d cache file; matches Pose3DCache.GetCachePath (nameA_nameB.pose3d.json in dir of video A).
+        /// </summary>
+        private static string GetPose3dPath(string videoAPath, string videoBPath)
+        {
+            string nameA = Path.GetFileNameWithoutExtension(videoAPath);
+            string nameB = Path.GetFileNameWithoutExtension(videoBPath);
+            string dir = Path.GetDirectoryName(videoAPath);
+            return Path.Combine(dir, nameA + "_" + nameB + ".pose3d.json");
         }
 
         private static UploadMetadata BuildUploadMetadata(SessionUploadRecord session, string userId)

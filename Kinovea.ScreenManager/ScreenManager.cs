@@ -59,6 +59,23 @@ namespace Kinovea.ScreenManager
         {
             get { return screenList.Count;}
         }
+
+        /// <summary>
+        /// Returns the set of file paths currently open in any screen (players or capture with a path).
+        /// Used by cloud backup to avoid uploading files that are open in the app.
+        /// </summary>
+        public HashSet<string> GetOpenVideoPaths()
+        {
+            var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (AbstractScreen screen in screenList)
+            {
+                if (screen == null) continue;
+                string path = screen.FilePath;
+                if (!string.IsNullOrEmpty(path))
+                    paths.Add(path);
+            }
+            return paths;
+        }
         #endregion
 
         #region Members

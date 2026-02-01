@@ -39,14 +39,19 @@ def lambda_handler(event, context):
         # Optional: use client filenames so S3 keys keep original names (e.g. 20260131-192536.mp4)
         face_on_filename = _sanitize_filename(body.get('face_on_filename'), 'face-on.mp4')
         down_the_line_filename = _sanitize_filename(body.get('down_the_line_filename'), 'down-the-line.mp4')
-        
-        # S3 layout: CLIENTID/HeadOn/<file>, CLIENTID/DTL/<file>, CLIENTID/metadata/<session_id>.json
+        face_on_kva_filename = _kva_filename(face_on_filename)
+        down_the_line_kva_filename = _kva_filename(down_the_line_filename)
+
+        # S3 layout: flat under user_id (filenames are distinct: headon-*, dtl-*, session_id.json, etc.)
         expiration = 3600  # 1 hour
         urls = {
             'session_id': session_id,
-            'face_on_url': generate_presigned_url(f"{user_id}/HeadOn/{face_on_filename}", expiration, 'application/octet-stream'),
-            'down_the_line_url': generate_presigned_url(f"{user_id}/DTL/{down_the_line_filename}", expiration, 'application/octet-stream'),
-            'metadata_url': generate_presigned_url(f"{user_id}/metadata/{session_id}.json", expiration, 'application/json'),
+            'face_on_url': generate_presigned_url(f"{user_id}/{face_on_filename}", expiration, 'application/octet-stream'),
+            'down_the_line_url': generate_presigned_url(f"{user_id}/{down_the_line_filename}", expiration, 'application/octet-stream'),
+            'face_on_kva_url': generate_presigned_url(f"{user_id}/{face_on_kva_filename}", expiration, 'application/octet-stream'),
+            'down_the_line_kva_url': generate_presigned_url(f"{user_id}/{down_the_line_kva_filename}", expiration, 'application/octet-stream'),
+            'metadata_url': generate_presigned_url(f"{user_id}/{session_id}.json", expiration, 'application/json; charset=utf-8'),
+            'pose3d_url': generate_presigned_url(f"{user_id}/{session_id}.pose3d.json", expiration, 'application/json; charset=utf-8'),
             'expires_in': expiration
         }
         
@@ -76,6 +81,13 @@ def _sanitize_filename(value: str, default: str) -> str:
     if not name or '..' in name or '/' in name or '\\' in name:
         return default
     return name
+
+
+def _kva_filename(video_filename: str) -> str:
+    """Derive .kva filename from video filename (e.g. headon-20260201-104101.mp4 -> headon-20260201-104101.kva)."""
+    if not video_filename or not video_filename.endswith('.mp4'):
+        return 'metadata.kva'
+    return video_filename[:-4] + '.kva'
 
 
 def generate_presigned_url(key: str, expiration: int, content_type: str = 'application/octet-stream') -> str:

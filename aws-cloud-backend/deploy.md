@@ -26,38 +26,11 @@
 
 **Lambda code with ContentType (required for S3 presigned PUT):**
 
+Use the code in this repo: **`aws-cloud-backend/lambda_function.py`**. Do not use older snippets that used `CaptureA`/`CaptureB` or `{user_id}/{session_id}/` layout.
+
 The client sends `Content-Type: application/octet-stream` for video files and `application/json` for metadata. The presigned URL must be generated with the same `ContentType` in `Params`, or S3 returns 403 Forbidden.
 
-```python
-import boto3
-import json
-import uuid
-
-s3_client = boto3.client('s3')
-BUCKET_NAME = 'swingforge-intake'  # or use os.environ['INTAKE_BUCKET']
-
-def lambda_handler(event, context):
-    body = json.loads(event.get('body', '{}'))
-    user_id = body.get('user_id')
-    session_id = body.get('session_id') or str(uuid.uuid4())
-    prefix = f"{user_id}/{session_id}"
-    expiration = 3600
-    urls = {
-        'session_id': session_id,
-        'face_on_url': generate_presigned_url(f"{prefix}/face-on.mp4", expiration, 'application/octet-stream'),
-        'down_the_line_url': generate_presigned_url(f"{prefix}/down-the-line.mp4", expiration, 'application/octet-stream'),
-        'metadata_url': generate_presigned_url(f"{prefix}/metadata.json", expiration, 'application/json'),
-        'expires_in': expiration
-    }
-    return {'statusCode': 200, 'headers': {'Content-Type': 'application/json'}, 'body': json.dumps(urls)}
-
-def generate_presigned_url(key, expiration, content_type='application/octet-stream'):
-    return s3_client.generate_presigned_url(
-        'put_object',
-        Params={'Bucket': BUCKET_NAME, 'Key': key, 'ContentType': content_type},
-        ExpiresIn=expiration
-    )
-```
+**S3 layout (current):** Flat under `{user_id}/`: `{user_id}/{filename}.mp4`, `{user_id}/{filename}.kva`, `{user_id}/{session_id}.json`, `{user_id}/{session_id}.pose3d.json`. Filenames are distinct (e.g. headon-*, dtl-*), so no subfolders.
 
 **Via AWS CLI:**
 
@@ -185,16 +158,16 @@ Expected: HTTP 200 OK. Check S3 console for the uploaded file.
 6. Capture a video pair (or use existing videos in monitored folders)
 7. Click "Sync Now" or wait for the batch timer
 8. Check S3 console for uploaded files:
-   - `swingforge-intake/{user_id}/{session_id}/face-on.mp4`
-   - `swingforge-intake/{user_id}/{session_id}/down-the-line.mp4`
-   - `swingforge-intake/{user_id}/{session_id}/metadata.json`
+   - `swingforge-intake/{user_id}/{filename}.mp4` (e.g. headon-*.mp4, dtl-*.mp4)
+   - `swingforge-intake/{user_id}/{filename}.kva`
+   - `swingforge-intake/{user_id}/{session_id}.json`
 
 ### Test 4: Verify Metadata
 
 Download and inspect `metadata.json` from S3:
 
 ```bash
-aws s3 cp s3://swingforge-intake/{user_id}/{session_id}/metadata.json - | jq .
+aws s3 cp s3://swingforge-intake/{user_id}/{session_id}.json - | jq .
 ```
 
 Expected fields:

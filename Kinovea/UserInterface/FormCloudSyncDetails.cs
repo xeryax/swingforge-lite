@@ -28,6 +28,8 @@ namespace Kinovea.Root
 
             lblSuccessfulUploads.Text = success.ToString();
             lblFailedUploads.Text = failed.ToString();
+            string lastFailure = CloudSyncStats.LastFailureReason;
+            lblLastFailure.Text = string.IsNullOrEmpty(lastFailure) ? "-" : lastFailure;
             if (speed >= 1024 * 1024)
                 lblUploadSpeed.Text = string.Format("{0:F2} MB/s", speed / (1024 * 1024));
             else if (speed >= 1024)

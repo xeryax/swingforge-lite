@@ -91,7 +91,10 @@ namespace Kinovea.Services
                         SessionId = parsed.SessionId,
                         FaceOnUrl = parsed.FaceOnUrl,
                         DownTheLineUrl = parsed.DownTheLineUrl,
-                        MetadataUrl = parsed.MetadataUrl
+                        FaceOnKvaUrl = parsed.FaceOnKvaUrl,
+                        DownTheLineKvaUrl = parsed.DownTheLineKvaUrl,
+                        MetadataUrl = parsed.MetadataUrl,
+                        Pose3dUrl = parsed.Pose3dUrl
                     };
                 }
                 catch (Exception ex)
@@ -147,6 +150,46 @@ namespace Kinovea.Services
         }
 
         /// <summary>
+        /// Upload a JSON file (e.g. pose3d) to a presigned PUT URL with Content-Type application/json; charset=utf-8.
+        /// </summary>
+        public async Task<bool> UploadJsonFileAsync(string localPath, string presignedUrl)
+        {
+            if (!File.Exists(localPath))
+            {
+                log.ErrorFormat("UploadJsonFile: file not found: {0}", localPath);
+                return false;
+            }
+
+            byte[] bytes = File.ReadAllBytes(localPath);
+            var contentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+            contentType.CharSet = "utf-8";
+            for (int attempt = 1; attempt <= MaxRetries; attempt++)
+            {
+                try
+                {
+                    var content = new ByteArrayContent(bytes);
+                    content.Headers.ContentType = contentType;
+                    content.Headers.ContentLength = bytes.Length;
+                    var request = new HttpRequestMessage(HttpMethod.Put, presignedUrl) { Content = content };
+                    var response = await httpClient.SendAsync(request).ConfigureAwait(false);
+                    if (response.IsSuccessStatusCode)
+                        return true;
+                    string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    log.WarnFormat("UploadJsonFile attempt {0}: {1} {2}", attempt, response.StatusCode, body);
+                }
+                catch (Exception ex)
+                {
+                    log.WarnFormat("UploadJsonFile attempt {0}: {1} for {2}", attempt, ex.Message, localPath);
+                }
+
+                if (attempt < MaxRetries)
+                    await Task.Delay(BaseDelayMs * attempt).ConfigureAwait(false);
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Upload metadata JSON to the presigned URL. Retries up to MaxRetries.
         /// </summary>
         public async Task<bool> UploadMetadataAsync(UploadMetadata metadata, string presignedUrl)
@@ -155,16 +198,22 @@ namespace Kinovea.Services
             if (string.IsNullOrEmpty(json))
                 return false;
 
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
             for (int attempt = 1; attempt <= MaxRetries; attempt++)
             {
                 try
                 {
-                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    var content = new ByteArrayContent(bytes);
+                    var contentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                    contentType.CharSet = "utf-8";
+                    content.Headers.ContentType = contentType;
+                    content.Headers.ContentLength = bytes.Length;
                     var request = new HttpRequestMessage(HttpMethod.Put, presignedUrl) { Content = content };
                     var response = await httpClient.SendAsync(request).ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                         return true;
-                    log.WarnFormat("UploadMetadata attempt {0}: {1}", attempt, response.StatusCode);
+                    string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    log.WarnFormat("UploadMetadata attempt {0}: {1} {2}", attempt, response.StatusCode, body);
                 }
                 catch (Exception ex)
                 {
@@ -222,6 +271,9 @@ namespace Kinovea.Services
         public string SessionId { get; set; }
         public string FaceOnUrl { get; set; }
         public string DownTheLineUrl { get; set; }
+        public string FaceOnKvaUrl { get; set; }
+        public string DownTheLineKvaUrl { get; set; }
         public string MetadataUrl { get; set; }
+        public string Pose3dUrl { get; set; }
     }
 }

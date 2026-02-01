@@ -35,8 +35,17 @@ namespace Kinovea.Services
         [DataMember(Name = "down_the_line_url")]
         public string DownTheLineUrl { get; set; }
 
+        [DataMember(Name = "face_on_kva_url")]
+        public string FaceOnKvaUrl { get; set; }
+
+        [DataMember(Name = "down_the_line_kva_url")]
+        public string DownTheLineKvaUrl { get; set; }
+
         [DataMember(Name = "metadata_url")]
         public string MetadataUrl { get; set; }
+
+        [DataMember(Name = "pose3d_url")]
+        public string Pose3dUrl { get; set; }
 
         [DataMember(Name = "expires_in")]
         public int ExpiresIn { get; set; }

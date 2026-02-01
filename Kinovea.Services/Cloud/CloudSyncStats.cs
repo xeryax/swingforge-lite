@@ -23,6 +23,7 @@ namespace Kinovea.Services
         private static int totalFailedUploads;
         private static double lastUploadSpeedBytesPerSec;
         private static DateTime? lastBatchTimeUtc;
+        private static string lastFailureReason;
 
         public static int TotalSuccessfulUploads
         {
@@ -44,16 +45,24 @@ namespace Kinovea.Services
             get { lock (Lock) return lastBatchTimeUtc; }
         }
 
+        public static string LastFailureReason
+        {
+            get { lock (Lock) return lastFailureReason ?? ""; }
+        }
+
         public static void RecordSessionSuccess()
         {
             lock (Lock)
                 totalSuccessfulUploads++;
         }
 
-        public static void RecordSessionFailure()
+        public static void RecordSessionFailure(string reason = null)
         {
             lock (Lock)
+            {
                 totalFailedUploads++;
+                lastFailureReason = reason ?? "Upload failed";
+            }
         }
 
         public static void RecordBatchComplete(long bytesUploaded, TimeSpan elapsed)

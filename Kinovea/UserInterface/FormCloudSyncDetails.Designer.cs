@@ -28,6 +28,8 @@ namespace Kinovea.Root
             this.lblUploadSpeed = new System.Windows.Forms.Label();
             this.lblLastBatchLabel = new System.Windows.Forms.Label();
             this.lblLastBatch = new System.Windows.Forms.Label();
+            this.lblLastFailureLabel = new System.Windows.Forms.Label();
+            this.lblLastFailure = new System.Windows.Forms.Label();
             this.btnOK = new System.Windows.Forms.Button();
             this.SuspendLayout();
             //
@@ -103,9 +105,28 @@ namespace Kinovea.Root
             this.lblLastBatch.TabIndex = 7;
             this.lblLastBatch.Text = "(never)";
             //
+            // lblLastFailureLabel
+            //
+            this.lblLastFailureLabel.AutoSize = true;
+            this.lblLastFailureLabel.Location = new System.Drawing.Point(20, 120);
+            this.lblLastFailureLabel.Name = "lblLastFailureLabel";
+            this.lblLastFailureLabel.Size = new System.Drawing.Size(62, 13);
+            this.lblLastFailureLabel.TabIndex = 8;
+            this.lblLastFailureLabel.Text = "Last failure:";
+            //
+            // lblLastFailure
+            //
+            this.lblLastFailure.AutoSize = true;
+            this.lblLastFailure.Location = new System.Drawing.Point(140, 120);
+            this.lblLastFailure.MaximumSize = new System.Drawing.Size(200, 0);
+            this.lblLastFailure.Name = "lblLastFailure";
+            this.lblLastFailure.Size = new System.Drawing.Size(16, 13);
+            this.lblLastFailure.TabIndex = 9;
+            this.lblLastFailure.Text = "-";
+            //
             // btnOK
             //
-            this.btnOK.Location = new System.Drawing.Point(180, 130);
+            this.btnOK.Location = new System.Drawing.Point(180, 155);
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(75, 25);
             this.btnOK.TabIndex = 8;
@@ -118,7 +139,7 @@ namespace Kinovea.Root
             this.AcceptButton = this.btnOK;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(284, 171);
+            this.ClientSize = new System.Drawing.Size(284, 196);
             this.Controls.Add(this.lblSuccessfulLabel);
             this.Controls.Add(this.lblSuccessfulUploads);
             this.Controls.Add(this.lblFailedLabel);
@@ -127,6 +148,8 @@ namespace Kinovea.Root
             this.Controls.Add(this.lblUploadSpeed);
             this.Controls.Add(this.lblLastBatchLabel);
             this.Controls.Add(this.lblLastBatch);
+            this.Controls.Add(this.lblLastFailureLabel);
+            this.Controls.Add(this.lblLastFailure);
             this.Controls.Add(this.btnOK);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -146,6 +169,8 @@ namespace Kinovea.Root
         private System.Windows.Forms.Label lblUploadSpeed;
         private System.Windows.Forms.Label lblLastBatchLabel;
         private System.Windows.Forms.Label lblLastBatch;
+        private System.Windows.Forms.Label lblLastFailureLabel;
+        private System.Windows.Forms.Label lblLastFailure;
         private System.Windows.Forms.Button btnOK;
     }
 }
